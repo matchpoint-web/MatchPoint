@@ -1,0 +1,30 @@
+import { AuthForm } from "@/components/auth/AuthForm";
+import { signIn } from "@/lib/auth/actions";
+import type { AuthActionState } from "@/lib/auth/types";
+
+async function playerSignIn(
+  prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  "use server";
+  return signIn("player", prevState, formData);
+}
+
+export default async function PlayerLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const params = await searchParams;
+
+  return (
+    <div className="mx-auto flex justify-center">
+      <AuthForm
+        role="player"
+        mode="login"
+        action={playerSignIn}
+        next={params.next}
+      />
+    </div>
+  );
+}

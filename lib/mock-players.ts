@@ -434,7 +434,9 @@ export function matchesMajorFilter(major: string, filter: string): boolean {
 
 export function matchesAcademicTestFilter(test: string, filter: string): boolean {
   if (!filter) return true;
-  if (filter === "Other") return !listedAcademicTests.includes(test);
+  if (filter === "Other") {
+    return !listedAcademicTests.some((listed) => listed === test);
+  }
   return test === filter;
 }
 

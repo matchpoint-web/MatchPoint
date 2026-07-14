@@ -50,12 +50,17 @@ export function getCoachCRMData(
   defaults?: Partial<CoachCRMData>,
 ): CoachCRMData {
   const stored = readAll()[playerId];
+  const base: CoachCRMData = {
+    rating: 5,
+    status: "Interested",
+    followUpDate: "",
+    reminderEnabled: false,
+    privateNotes: "",
+  };
+
   return {
-    rating: defaults?.rating ?? 5,
-    status: defaults?.status ?? "Interested",
-    followUpDate: defaults?.followUpDate ?? "",
-    reminderEnabled: defaults?.reminderEnabled ?? false,
-    privateNotes: defaults?.privateNotes ?? "",
+    ...base,
+    ...defaults,
     ...stored,
   };
 }
