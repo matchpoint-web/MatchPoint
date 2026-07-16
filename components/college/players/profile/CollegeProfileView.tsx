@@ -10,6 +10,7 @@ import {
   isPlayerSaved,
   toggleSavedPlayer,
 } from "@/lib/saved-players";
+import { trackPlayerView } from "@/lib/dashboard";
 
 type CollegeProfileViewProps = {
   profile: CollegePlayerProfile;
@@ -20,6 +21,7 @@ export function CollegeProfileView({ profile }: CollegeProfileViewProps) {
 
   useEffect(() => {
     setSaved(isPlayerSaved(profile.id));
+    trackPlayerView(profile.id);
   }, [profile.id]);
 
   function handleToggleSave() {
