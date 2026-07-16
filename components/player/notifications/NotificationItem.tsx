@@ -45,7 +45,7 @@ export function NotificationItem({
             {notification.title}
           </p>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-500" suppressHydrationWarning>
               {formatNotificationTime(notification.createdAt)}
             </span>
             {notification.unread ? (

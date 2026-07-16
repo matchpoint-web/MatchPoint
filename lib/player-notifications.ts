@@ -20,7 +20,7 @@ export const mockPlayerNotifications: PlayerNotification[] = [
     title: "Stanford University viewed your profile",
     description:
       "A college coach recently reviewed your recruiting profile.",
-    createdAt: "2026-07-16T12:30:00",
+    createdAt: "2026-07-16T12:30:00.000Z",
     unread: true,
   },
   {
@@ -29,7 +29,7 @@ export const mockPlayerNotifications: PlayerNotification[] = [
     title: "UCLA saved your profile",
     description:
       "You were added to a college recruiting watch list.",
-    createdAt: "2026-07-16T09:10:00",
+    createdAt: "2026-07-16T09:10:00.000Z",
     unread: true,
   },
   {
@@ -38,7 +38,7 @@ export const mockPlayerNotifications: PlayerNotification[] = [
     title: "New message from University of Texas",
     description:
       "A coach sent you a recruiting message. Open Messages to reply.",
-    createdAt: "2026-07-15T18:45:00",
+    createdAt: "2026-07-15T18:45:00.000Z",
     unread: true,
   },
   {
@@ -47,7 +47,7 @@ export const mockPlayerNotifications: PlayerNotification[] = [
     title: "Complete your recruiting profile",
     description:
       "Add missing details to improve your visibility to college coaches.",
-    createdAt: "2026-07-14T11:00:00",
+    createdAt: "2026-07-14T11:00:00.000Z",
     unread: false,
   },
   {
@@ -55,7 +55,7 @@ export const mockPlayerNotifications: PlayerNotification[] = [
     type: "Profile Viewed",
     title: "University of Florida viewed your profile",
     description: "Your profile appeared in a college coach search.",
-    createdAt: "2026-07-13T16:20:00",
+    createdAt: "2026-07-13T16:20:00.000Z",
     unread: false,
   },
 ];
@@ -77,8 +77,10 @@ export function getNotificationHref(
 
 export function formatNotificationTime(iso: string): string {
   const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = Math.max(0, now.getTime() - date.getTime());
   const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
