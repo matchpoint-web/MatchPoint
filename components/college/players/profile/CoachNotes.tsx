@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { GlassCard } from "@/components/player/GlassCard";
 import { SectionTitle } from "@/components/player/SectionTitle";
 import {
   coachNoteStatuses,
-  getCoachNotes,
-  saveCoachNotes,
+  type CoachNote,
   type CoachNoteStatus,
 } from "@/lib/coach-notes";
+import { saveCoachNoteAction } from "@/lib/coach-notes/actions";
 
 type CoachNotesProps = {
   playerId: string;
+  initialNote?: CoachNote | null;
 };
 
 const DEFAULT_STATUS: CoachNoteStatus = "Prospect";
@@ -19,22 +20,37 @@ const DEFAULT_STATUS: CoachNoteStatus = "Prospect";
 const inputClassName =
   "w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-200 outline-none transition-colors hover:border-white/15 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20";
 
-export function CoachNotes({ playerId }: CoachNotesProps) {
-  const [status, setStatus] = useState<CoachNoteStatus>(DEFAULT_STATUS);
-  const [notes, setNotes] = useState("");
+export function CoachNotes({
+  playerId,
+  initialNote = null,
+}: CoachNotesProps) {
+  const [status, setStatus] = useState<CoachNoteStatus>(
+    initialNote?.status ?? DEFAULT_STATUS,
+  );
+  const [notes, setNotes] = useState(initialNote?.notes ?? "");
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
-    const existing = getCoachNotes(playerId);
-    setStatus(existing?.status ?? DEFAULT_STATUS);
-    setNotes(existing?.notes ?? "");
+    setStatus(initialNote?.status ?? DEFAULT_STATUS);
+    setNotes(initialNote?.notes ?? "");
     setSaved(false);
-  }, [playerId]);
+    setError(null);
+  }, [playerId, initialNote]);
 
   function handleSave() {
-    saveCoachNotes(playerId, status, notes);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
+    setError(null);
+    startTransition(async () => {
+      const result = await saveCoachNoteAction(playerId, status, notes);
+      if (result.error) {
+        setError(result.error);
+        setSaved(false);
+        return;
+      }
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    });
   }
 
   return (
@@ -55,6 +71,7 @@ export function CoachNotes({ playerId }: CoachNotesProps) {
               onChange={(e) => {
                 setStatus(e.target.value as CoachNoteStatus);
                 setSaved(false);
+                setError(null);
               }}
               className={inputClassName}
               style={{ colorScheme: "dark" }}
@@ -80,6 +97,7 @@ export function CoachNotes({ playerId }: CoachNotesProps) {
               onChange={(e) => {
                 setNotes(e.target.value);
                 setSaved(false);
+                setError(null);
               }}
               placeholder="Private recruiting notes..."
               rows={5}
@@ -100,6 +118,9 @@ export function CoachNotes({ playerId }: CoachNotesProps) {
             <span className="text-sm font-medium text-emerald-400">
               Notes saved
             </span>
+          ) : null}
+          {error ? (
+            <span className="text-sm font-medium text-red-400">{error}</span>
           ) : null}
         </div>
       </GlassCard>

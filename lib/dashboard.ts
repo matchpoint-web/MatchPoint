@@ -1,13 +1,6 @@
-import { mockPlayers, type MockPlayer } from "@/lib/mock-players";
-import {
-  countCoachNotesByStatus,
-  getRecentCoachNotes,
-  type CoachNote,
-} from "@/lib/coach-notes";
-import {
-  getRecentSavedPlayerIds,
-  getSavedPlayersCount,
-} from "@/lib/saved-players";
+import { type Player } from "@/lib/player-service";
+import { type CoachNote } from "@/lib/coach-notes";
+import { type SavedPlayerRecord } from "@/lib/saved-player-service";
 
 const RECENTLY_VIEWED_KEY = "matchpoint-recently-viewed";
 const MAX_RECENTLY_VIEWED = 50;
@@ -25,7 +18,7 @@ export type DashboardStatCard = {
 };
 
 export type RecentSavedPlayerRow = {
-  player: MockPlayer;
+  player: Player;
 };
 
 export type RecentCoachNoteRow = {
@@ -77,27 +70,34 @@ export function getRecentlyViewedPlayerIds(limit = 5): string[] {
     .map((entry) => entry.playerId);
 }
 
-function findPlayer(playerId: string): MockPlayer | undefined {
-  return mockPlayers.find((player) => player.id === playerId);
+function findPlayer(
+  players: Player[],
+  playerId: string,
+): Player | undefined {
+  return players.find((player) => player.id === playerId);
 }
 
-export function getDashboardStats(): DashboardStatCard[] {
+export function getDashboardStats(input: {
+  savedPlayersCount: number;
+  recruitingCount: number;
+  followUpCount: number;
+}): DashboardStatCard[] {
   return [
     {
       title: "Saved Players",
-      value: getSavedPlayersCount(),
+      value: input.savedPlayersCount,
       href: "/college/saved",
       description: "Players bookmarked for recruiting",
     },
     {
       title: "Recruiting",
-      value: countCoachNotesByStatus("Recruiting"),
+      value: input.recruitingCount,
       href: "/college/players",
       description: "Players marked as Recruiting",
     },
     {
       title: "Follow Up",
-      value: countCoachNotesByStatus("Follow Up"),
+      value: input.followUpCount,
       href: "/college/players",
       description: "Players needing follow-up",
     },
@@ -110,17 +110,28 @@ export function getDashboardStats(): DashboardStatCard[] {
   ];
 }
 
-export function getRecentSavedPlayers(limit = 5): RecentSavedPlayerRow[] {
-  return getRecentSavedPlayerIds(limit)
-    .map((playerId) => findPlayer(playerId))
-    .filter((player): player is MockPlayer => Boolean(player))
+export function getRecentSavedPlayers(
+  players: Player[],
+  savedRecords: SavedPlayerRecord[],
+  limit = 5,
+): RecentSavedPlayerRow[] {
+  const byId = new Map(players.map((player) => [player.id, player]));
+
+  return savedRecords
+    .slice(0, limit)
+    .map((record) => byId.get(record.player_id))
+    .filter((player): player is Player => Boolean(player))
     .map((player) => ({ player }));
 }
 
-export function getRecentCoachNoteRows(limit = 5): RecentCoachNoteRow[] {
-  return getRecentCoachNotes(limit).map((note) => ({
+export function getRecentCoachNoteRows(
+  players: Player[],
+  coachNotes: CoachNote[],
+  limit = 5,
+): RecentCoachNoteRow[] {
+  return coachNotes.slice(0, limit).map((note) => ({
     note,
-    playerName: findPlayer(note.playerId)?.name ?? "Unknown Player",
+    playerName: findPlayer(players, note.playerId)?.name ?? "Unknown Player",
   }));
 }
 

@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { CollegeProfileView } from "@/components/college/players/profile/CollegeProfileView";
+import { getCoachNote } from "@/lib/coach-notes-service";
+import { getPlayer } from "@/lib/player-service";
 import {
-  getAllCollegePlayerIds,
-  getCollegePlayerProfile,
-} from "@/lib/college-player-profile";
+  getCurrentCollegeId,
+  isPlayerSaved,
+} from "@/lib/saved-player-service";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -11,15 +13,44 @@ type PageProps = {
 
 export default async function CollegePlayerProfilePage({ params }: PageProps) {
   const { id } = await params;
-  const profile = getCollegePlayerProfile(id);
+
+  let profile;
+  try {
+    profile = await getPlayer(id);
+  } catch {
+    notFound();
+  }
 
   if (!profile) {
     notFound();
   }
 
-  return <CollegeProfileView profile={profile} />;
-}
+  let collegeId: string | null = null;
+  let initiallySaved = false;
+  let initialCoachNote = null;
 
-export async function generateStaticParams() {
-  return getAllCollegePlayerIds().map((id) => ({ id }));
+  try {
+    collegeId = await getCurrentCollegeId();
+    if (collegeId) {
+      const [saved, note] = await Promise.all([
+        isPlayerSaved(collegeId, id),
+        getCoachNote(id),
+      ]);
+      initiallySaved = saved;
+      initialCoachNote = note;
+    }
+  } catch {
+    collegeId = null;
+    initiallySaved = false;
+    initialCoachNote = null;
+  }
+
+  return (
+    <CollegeProfileView
+      profile={profile}
+      collegeId={collegeId}
+      initiallySaved={initiallySaved}
+      initialCoachNote={initialCoachNote}
+    />
+  );
 }

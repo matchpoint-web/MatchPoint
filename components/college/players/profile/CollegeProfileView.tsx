@@ -1,32 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { GlassCard } from "@/components/player/GlassCard";
 import { SectionTitle } from "@/components/player/SectionTitle";
 import { CoachNotes } from "@/components/college/players/profile/CoachNotes";
 import { type CollegePlayerProfile } from "@/lib/college-player-profile";
-import {
-  isPlayerSaved,
-  toggleSavedPlayer,
-} from "@/lib/saved-players";
 import { trackPlayerView } from "@/lib/dashboard";
+import { type CoachNote } from "@/lib/coach-notes";
+import { toggleSavedPlayerAction } from "@/lib/saved-players/actions";
 
 type CollegeProfileViewProps = {
   profile: CollegePlayerProfile;
+  collegeId: string | null;
+  initiallySaved: boolean;
+  initialCoachNote?: CoachNote | null;
 };
 
-export function CollegeProfileView({ profile }: CollegeProfileViewProps) {
-  const [saved, setSaved] = useState(false);
+export function CollegeProfileView({
+  profile,
+  collegeId,
+  initiallySaved,
+  initialCoachNote = null,
+}: CollegeProfileViewProps) {
+  const [saved, setSaved] = useState(initiallySaved);
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
-    setSaved(isPlayerSaved(profile.id));
+    setSaved(initiallySaved);
     trackPlayerView(profile.id);
-  }, [profile.id]);
+  }, [profile.id, initiallySaved]);
 
   function handleToggleSave() {
-    const next = toggleSavedPlayer(profile.id);
-    setSaved(next);
+    if (!collegeId) return;
+
+    const previouslySaved = saved;
+    setSaved(!previouslySaved);
+
+    startTransition(async () => {
+      try {
+        const next = await toggleSavedPlayerAction(profile.id);
+        setSaved(next);
+      } catch {
+        setSaved(previouslySaved);
+      }
+    });
   }
 
   const details = [
@@ -123,7 +141,7 @@ export function CollegeProfileView({ profile }: CollegeProfileViewProps) {
             </GlassCard>
           </section>
 
-          <CoachNotes playerId={profile.id} />
+          <CoachNotes playerId={profile.id} initialNote={initialCoachNote} />
         </div>
       </main>
     </div>

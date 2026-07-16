@@ -12,7 +12,10 @@ import {
   type RecentCoachNoteRow,
   type RecentSavedPlayerRow,
 } from "@/lib/dashboard";
+import { type Player } from "@/lib/player-service";
 import { useCollegeProfile } from "@/lib/use-college-profile";
+import { type CoachNote } from "@/lib/coach-notes";
+import { type SavedPlayerRecord } from "@/lib/saved-player-service";
 
 type DashboardData = {
   stats: DashboardStatCard[];
@@ -20,15 +23,39 @@ type DashboardData = {
   recentNotes: RecentCoachNoteRow[];
 };
 
-function loadDashboardData(): DashboardData {
+type CollegeDashboardClientProps = {
+  players: Player[];
+  savedRecords: SavedPlayerRecord[];
+  coachNotes: CoachNote[];
+  recruitingCount: number;
+  followUpCount: number;
+};
+
+function loadDashboardData(
+  players: Player[],
+  savedRecords: SavedPlayerRecord[],
+  coachNotes: CoachNote[],
+  recruitingCount: number,
+  followUpCount: number,
+): DashboardData {
   return {
-    stats: getDashboardStats(),
-    recentSaved: getRecentSavedPlayers(5),
-    recentNotes: getRecentCoachNoteRows(5),
+    stats: getDashboardStats({
+      savedPlayersCount: savedRecords.length,
+      recruitingCount,
+      followUpCount,
+    }),
+    recentSaved: getRecentSavedPlayers(players, savedRecords, 5),
+    recentNotes: getRecentCoachNoteRows(players, coachNotes, 5),
   };
 }
 
-export function CollegeDashboardClient() {
+export function CollegeDashboardClient({
+  players,
+  savedRecords,
+  coachNotes,
+  recruitingCount,
+  followUpCount,
+}: CollegeDashboardClientProps) {
   const profile = useCollegeProfile();
   const [data, setData] = useState<DashboardData>({
     stats: [
@@ -62,8 +89,16 @@ export function CollegeDashboardClient() {
   });
 
   useEffect(() => {
-    setData(loadDashboardData());
-  }, []);
+    setData(
+      loadDashboardData(
+        players,
+        savedRecords,
+        coachNotes,
+        recruitingCount,
+        followUpCount,
+      ),
+    );
+  }, [players, savedRecords, coachNotes, recruitingCount, followUpCount]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
