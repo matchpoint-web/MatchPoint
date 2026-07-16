@@ -25,6 +25,24 @@ export const navItems: NavItemConfig[] = [
     ),
   },
   {
+    label: "College Search",
+    href: "/player/colleges",
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 16.811V8.25a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 8.25v8.561M3 16.811c0 .952.624 1.792 1.515 2.106l6.24 2.208c.434.153.9.153 1.334 0l6.24-2.208C20.376 18.603 21 17.763 21 16.811M6.75 8.25V6a.75.75 0 01.75-.75h9a.75.75 0 01.75.75v2.25" />
+      </svg>
+    ),
+  },
+  {
+    label: "Notifications",
+    href: "/player/notifications",
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+      </svg>
+    ),
+  },
+  {
     label: "My Profile",
     href: "/player/profile",
     icon: (
@@ -59,6 +77,9 @@ export function getPageTitle(pathname: string): string {
   }
 
   if (pathname === "/player") return "Dashboard";
+  if (pathname.startsWith("/player/colleges/")) return "College Details";
+  if (pathname === "/player/messages") return "Messages";
+  if (pathname === "/player/notifications") return "Notifications";
 
   const match = navItems
     .filter((item) => item.href !== "/player")
