@@ -1,59 +1,68 @@
-import Link from "next/link";
-import { mockConversations } from "@/lib/college-messages";
+"use client";
 
-const savedPlayers = mockConversations.filter((c) => c.isSaved && !c.isArchived);
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { PlayerCard } from "@/components/college/players/PlayerCard";
+import { mockPlayers } from "@/lib/mock-players";
+import {
+  getSavedPlayerIds,
+  removeSavedPlayer,
+} from "@/lib/saved-players";
 
 export default function SavedPlayersPage() {
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setSavedIds(getSavedPlayerIds());
+  }, []);
+
+  const savedPlayers = useMemo(() => {
+    const byId = new Map(mockPlayers.map((player) => [player.id, player]));
+    return savedIds
+      .map((id) => byId.get(id))
+      .filter((player): player is NonNullable<typeof player> => Boolean(player));
+  }, [savedIds]);
+
+  function handleRemove(playerId: string) {
+    removeSavedPlayer(playerId);
+    setSavedIds((prev) => prev.filter((id) => id !== playerId));
+  }
+
   return (
     <div className="px-6 py-8 sm:px-8 lg:px-10">
-      <div className="mx-auto max-w-5xl">
-        <p className="mb-6 text-sm text-zinc-500">
+      <div className="mx-auto max-w-7xl">
+        <p className="mb-6 text-sm text-zinc-500 sm:text-base">
           Players your staff has bookmarked for recruiting follow-up.
         </p>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {savedPlayers.map((player) => (
+        {savedPlayers.length === 0 ? (
+          <div className="rounded-3xl border border-white/8 bg-white/[0.03] px-6 py-16 text-center">
+            <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+              No Saved Players
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-sm text-zinc-500 sm:text-base">
+              Save players from Player Search to review them later.
+            </p>
             <Link
-              key={player.id}
-              href={`/college/players/${player.playerId}`}
-              className="group rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-500/20"
+              href="/college/players"
+              className="mt-8 inline-flex rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/25"
             >
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/30 bg-zinc-900 text-sm font-bold text-emerald-400">
-                  {player.initials}
-                </div>
-                <div>
-                  <p className="font-semibold text-white group-hover:text-emerald-300">
-                    {player.playerName}
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {player.country} {player.countryFlag}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-white/[0.03] px-2 py-2">
-                  <p className="text-[10px] uppercase text-zinc-500">UTR</p>
-                  <p className="text-sm font-semibold text-white">
-                    {player.utr.toFixed(1)}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white/[0.03] px-2 py-2">
-                  <p className="text-[10px] uppercase text-zinc-500">GPA</p>
-                  <p className="text-sm font-semibold text-white">
-                    {player.gpa.toFixed(1)}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white/[0.03] px-2 py-2">
-                  <p className="text-[10px] uppercase text-zinc-500">Class</p>
-                  <p className="text-sm font-semibold text-white">
-                    {player.graduationYear}
-                  </p>
-                </div>
-              </div>
+              Go to Player Search
             </Link>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {savedPlayers.map((player) => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                saved
+                mode="saved"
+                onToggleSave={handleRemove}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
