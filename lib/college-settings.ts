@@ -1,14 +1,11 @@
 /**
- * @deprecated Prefer `@/lib/college-profile`.
- * Thin compatibility aliases for older imports.
+ * @deprecated Prefer `@/lib/college-profile` types and
+ * `@/lib/college-profile-service` for persistence.
  */
 export {
-  COLLEGE_PROFILE_STORAGE_KEY as COLLEGE_SETTINGS_STORAGE_KEY,
-  getCollegeProfile as getCollegeSettings,
-  getDefaultCollegeProfile,
+  type CollegeProfile as CollegeSettings,
+  getDefaultCollegeProfile as getCollegeSettings,
   getUniversityInitials,
   ncaaDivisions,
-  saveCollegeProfile as saveCollegeSettings,
-  type CollegeProfile as CollegeSettings,
   type NcaaDivision,
 } from "@/lib/college-profile";

@@ -1,5 +1,7 @@
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import { CollegeProfileProvider } from "@/components/college/CollegeProfileProvider";
 import { requireUser } from "@/lib/auth/actions";
+import { getCurrentCollegeProfile } from "@/lib/college-profile-service";
 
 export default async function CollegeLayout({
   children,
@@ -7,5 +9,11 @@ export default async function CollegeLayout({
   children: React.ReactNode;
 }>) {
   await requireUser("college");
-  return <DashboardShell>{children}</DashboardShell>;
+  const collegeProfile = await getCurrentCollegeProfile();
+
+  return (
+    <CollegeProfileProvider initialProfile={collegeProfile}>
+      <DashboardShell>{children}</DashboardShell>
+    </CollegeProfileProvider>
+  );
 }

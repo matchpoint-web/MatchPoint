@@ -3,22 +3,32 @@
 import { useEffect, useState } from "react";
 import { Toast } from "@/components/ui/Toast";
 import { GlassCard } from "@/components/player/GlassCard";
+import { useCollegeProfileActions } from "@/components/college/CollegeProfileProvider";
 import {
-  getCollegeProfile,
   getUniversityInitials,
   ncaaDivisions,
-  saveCollegeProfile,
+  notifyCollegeProfileUpdated,
   type CollegeProfile,
   type NcaaDivision,
 } from "@/lib/college-profile";
+import { saveCollegeProfileAction } from "@/lib/college-profile/actions";
 
 const inputClassName =
   "w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/30";
 
 const labelClassName = "mb-1.5 block text-sm text-zinc-400";
 
-export function CollegeSettingsForm() {
-  const [settings, setSettings] = useState<CollegeProfile | null>(null);
+type CollegeSettingsFormProps = {
+  initialProfile: CollegeProfile;
+};
+
+export function CollegeSettingsForm({
+  initialProfile,
+}: CollegeSettingsFormProps) {
+  const { setProfile } = useCollegeProfileActions();
+  const [settings, setSettings] = useState<CollegeProfile>(initialProfile);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     tone: "success" | "error";
@@ -26,19 +36,22 @@ export function CollegeSettingsForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setSettings(getCollegeProfile());
-  }, []);
+    setSettings(initialProfile);
+    setLogoFile(null);
+    setRemoveLogo(false);
+  }, [initialProfile]);
 
   function update<K extends keyof CollegeProfile>(
     key: K,
     value: CollegeProfile[K],
   ) {
-    setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
+    setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file || !settings) return;
+    event.target.value = "";
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setToast({
@@ -60,6 +73,8 @@ export function CollegeSettingsForm() {
     reader.onload = () => {
       if (typeof reader.result === "string") {
         update("logoDataUrl", reader.result);
+        setLogoFile(file);
+        setRemoveLogo(false);
       }
     };
     reader.onerror = () => {
@@ -73,11 +88,12 @@ export function CollegeSettingsForm() {
 
   function handleRemoveLogo() {
     update("logoDataUrl", null);
+    setLogoFile(null);
+    setRemoveLogo(true);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!settings) return;
 
     if (!settings.universityName.trim()) {
       setToast({
@@ -97,10 +113,52 @@ export function CollegeSettingsForm() {
 
     setSaving(true);
     try {
-      const saved = saveCollegeProfile(settings);
-      setSettings(saved);
+      const formData = new FormData();
+      formData.set("universityName", settings.universityName);
+      formData.set("ncaaDivision", settings.ncaaDivision);
+      formData.set("conference", settings.conference);
+      formData.set("state", settings.state);
+      formData.set("city", settings.city);
+      formData.set("website", settings.website);
+      formData.set("headCoach", settings.headCoach);
+      formData.set("assistantCoach", settings.assistantCoach);
+      formData.set("contactEmail", settings.contactEmail);
+      formData.set("aboutProgram", settings.aboutProgram);
+      formData.set("facilities", settings.facilities);
+      formData.set("recruitingInformation", settings.recruitingInformation);
+      formData.set("removeLogo", removeLogo ? "true" : "false");
+
+      const existingLogoUrl =
+        removeLogo || logoFile
+          ? ""
+          : (initialProfile.logoDataUrl ??
+            (settings.logoDataUrl?.startsWith("http")
+              ? settings.logoDataUrl
+              : "") ??
+            "");
+      formData.set("existingLogoUrl", existingLogoUrl);
+
+      if (logoFile) {
+        formData.set("logoFile", logoFile);
+      }
+
+      const result = await saveCollegeProfileAction(formData);
+
+      if (result.error || !result.profile) {
+        setToast({
+          message: result.error ?? "Failed to save settings.",
+          tone: "error",
+        });
+        return;
+      }
+
+      setSettings(result.profile);
+      setLogoFile(null);
+      setRemoveLogo(false);
+      setProfile(result.profile);
+      notifyCollegeProfileUpdated(result.profile);
       setToast({
-        message: "Settings saved successfully.",
+        message: result.success ?? "Settings saved successfully.",
         tone: "success",
       });
     } catch {
@@ -111,14 +169,6 @@ export function CollegeSettingsForm() {
     } finally {
       setSaving(false);
     }
-  }
-
-  if (!settings) {
-    return (
-      <div className="rounded-3xl border border-white/8 bg-zinc-900/50 px-6 py-12 text-center text-sm text-zinc-500">
-        Loading settings…
-      </div>
-    );
   }
 
   const initials = getUniversityInitials(settings.universityName);
