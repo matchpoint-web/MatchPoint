@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CollegeProfileAvatar } from "@/components/college/CollegeProfileAvatar";
 import {
   formatNoteUpdatedAt,
   getDashboardStats,
@@ -11,11 +12,7 @@ import {
   type RecentCoachNoteRow,
   type RecentSavedPlayerRow,
 } from "@/lib/dashboard";
-
-const college = {
-  name: "Stanford University",
-  recruiter: "Coach Michael Rivera",
-};
+import { useCollegeProfile } from "@/lib/use-college-profile";
 
 type DashboardData = {
   stats: DashboardStatCard[];
@@ -32,6 +29,7 @@ function loadDashboardData(): DashboardData {
 }
 
 export function CollegeDashboardClient() {
+  const profile = useCollegeProfile();
   const [data, setData] = useState<DashboardData>({
     stats: [
       {
@@ -76,13 +74,19 @@ export function CollegeDashboardClient() {
               Welcome back
             </p>
             <h2 className="mb-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              {college.recruiter}
+              {profile.headCoach || "Head Coach"}
             </h2>
-            <p className="text-sm text-zinc-500 sm:text-base">{college.name}</p>
+            <p className="text-sm text-zinc-500 sm:text-base">
+              {profile.universityName}
+            </p>
+            {profile.ncaaDivision ? (
+              <p className="mt-2 text-xs font-medium uppercase tracking-wider text-zinc-600">
+                {profile.ncaaDivision}
+                {profile.conference ? ` · ${profile.conference}` : ""}
+              </p>
+            ) : null}
           </div>
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-amber-500/20 bg-gradient-to-br from-zinc-800 to-zinc-900 text-lg font-bold text-amber-400/80">
-            SU
-          </div>
+          <CollegeProfileAvatar profile={profile} size="md" />
         </div>
       </section>
 

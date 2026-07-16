@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
+import { CollegeProfileAvatar } from "@/components/college/CollegeProfileAvatar";
 import { signOut } from "@/lib/auth/actions";
+import { useCollegeProfile } from "@/lib/use-college-profile";
 import { NavItem } from "./NavItem";
 import {
   getHomeHref,
@@ -22,6 +24,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const items = getNavItems(pathname);
   const homeHref = getHomeHref(pathname);
   const portal = getPortal(pathname);
+  const collegeProfile = useCollegeProfile();
   const [isPending, startTransition] = useTransition();
 
   function handleLogout() {
@@ -81,30 +84,42 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
         <div className="border-t border-white/[0.06] p-4">
           <div className="mb-3 flex items-center gap-3 rounded-2xl px-2 py-2">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5"
-              aria-hidden
-            >
-              <svg
-                className="h-4 w-4 text-zinc-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
+            {portal === "college" ? (
+              <CollegeProfileAvatar
+                profile={collegeProfile}
+                size="sm"
+                className="border-white/10"
+              />
+            ) : (
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5"
+                aria-hidden
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
-                />
-              </svg>
-            </div>
+                <svg
+                  className="h-4 w-4 text-zinc-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+                  />
+                </svg>
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-zinc-300">
-                {portal === "college" ? "Stanford Staff" : "Account"}
+                {portal === "college"
+                  ? collegeProfile.universityName
+                  : "Account"}
               </p>
               <p className="truncate text-xs text-zinc-600">
-                {portal === "college" ? "Coach Michael Rivera" : "Player"}
+                {portal === "college"
+                  ? collegeProfile.headCoach || "Head Coach"
+                  : "Player"}
               </p>
             </div>
           </div>
