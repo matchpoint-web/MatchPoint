@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { type PlayerProfile } from "@/lib/player-profile";
 import { GlassCard } from "../GlassCard";
 
@@ -6,8 +7,8 @@ type ProfileHeroProps = {
 };
 
 const stats = (profile: PlayerProfile) => [
-  { label: "Country", value: `${profile.country} ${profile.countryFlag}` },
-  { label: "Age", value: String(profile.age) },
+  { label: "Country", value: `${profile.country} ${profile.countryFlag}`.trim() },
+  { label: "Age", value: profile.age > 0 ? String(profile.age) : "—" },
   { label: "Graduation Year", value: profile.graduationYear },
   { label: "UTR", value: profile.utr },
   { label: "GPA", value: profile.gpa },
@@ -23,20 +24,29 @@ export function ProfileHero({ profile }: ProfileHeroProps) {
         <div className="mx-auto shrink-0 lg:mx-0">
           <div className="relative">
             <div className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-2 border-emerald-500/30 bg-gradient-to-br from-zinc-800 to-zinc-900 shadow-xl shadow-emerald-500/10 sm:h-44 sm:w-44">
-              <svg
-                className="h-16 w-16 text-zinc-600 sm:h-20 sm:w-20"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1}
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+              {profile.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.profileImageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
                 />
-              </svg>
+              ) : (
+                <svg
+                  className="h-16 w-16 text-zinc-600 sm:h-20 sm:w-20"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1}
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+                  />
+                </svg>
+              )}
             </div>
             <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/20 backdrop-blur-sm">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
@@ -72,12 +82,12 @@ export function ProfileHero({ profile }: ProfileHeroProps) {
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <button
-              type="button"
-              className="rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-black transition-all duration-300 hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/25"
+            <Link
+              href="/player/profile/edit"
+              className="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-black transition-all duration-300 hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/25"
             >
               Edit Profile
-            </button>
+            </Link>
             <button
               type="button"
               className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/20 hover:bg-white/10"

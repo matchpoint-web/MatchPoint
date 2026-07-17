@@ -1,23 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { PlayerCard } from "./PlayerCard";
+import { PlayerSearchFilters } from "./PlayerSearchFilters";
 import {
   defaultFilters,
-  matchesAcademicTestFilter,
   matchesCountryFilter,
   matchesGpaRange,
   matchesGraduationYearFilter,
-  matchesHeightRange,
-  matchesMajorFilter,
   matchesUtrRange,
-  mockPlayers,
   PLAYERS_PER_PAGE,
   sortOptions,
   type PlayerFilters,
   type SortOption,
 } from "@/lib/mock-players";
-import { PlayerSearchFilters } from "./PlayerSearchFilters";
+import { type Player } from "@/lib/player-service";
+import { toggleSavedPlayerAction } from "@/lib/saved-players/actions";
+
+type PlayerSearchClientProps = {
+  players: Player[];
+  collegeId: string | null;
+  initialSavedIds: string[];
+  error?: string | null;
+};
 
 function countActiveFilters(filters: PlayerFilters): number {
   let count = 0;
@@ -25,16 +30,11 @@ function countActiveFilters(filters: PlayerFilters): number {
   if (filters.graduationYear) count++;
   if (filters.utrRange) count++;
   if (filters.gpaRange) count++;
-  if (filters.division) count++;
-  if (filters.handedness) count++;
-  if (filters.major) count++;
-  if (filters.academicTest) count++;
-  if (filters.heightRange) count++;
   return count;
 }
 
 function filterPlayers(
-  players: typeof mockPlayers,
+  players: Player[],
   query: string,
   filters: PlayerFilters,
 ) {
@@ -48,24 +48,16 @@ function filterPlayers(
         player.graduationYear,
         filters.graduationYear,
       )
-    )
+    ) {
       return false;
+    }
     if (!matchesUtrRange(player.utr, filters.utrRange)) return false;
     if (!matchesGpaRange(player.gpa, filters.gpaRange)) return false;
-    if (filters.division && player.division !== filters.division) return false;
-    if (filters.handedness && player.handedness !== filters.handedness)
-      return false;
-    if (!matchesMajorFilter(player.major, filters.major)) return false;
-    if (
-      !matchesAcademicTestFilter(player.academicTest, filters.academicTest)
-    )
-      return false;
-    if (!matchesHeightRange(player.height, filters.heightRange)) return false;
     return true;
   });
 }
 
-function sortPlayers(players: typeof mockPlayers, sort: SortOption) {
+function sortPlayers(players: Player[], sort: SortOption) {
   const sorted = [...players];
   switch (sort) {
     case "highest-gpa":
@@ -81,16 +73,28 @@ function sortPlayers(players: typeof mockPlayers, sort: SortOption) {
   }
 }
 
-export function PlayerSearchClient() {
+export function PlayerSearchClient({
+  players,
+  collegeId,
+  initialSavedIds,
+  error = null,
+}: PlayerSearchClientProps) {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<PlayerFilters>(defaultFilters);
   const [sort, setSort] = useState<SortOption>("highest-utr");
   const [page, setPage] = useState(1);
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savedIds, setSavedIds] = useState<Set<string>>(
+    () => new Set(initialSavedIds),
+  );
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setSavedIds(new Set(initialSavedIds));
+  }, [initialSavedIds]);
 
   const filtered = useMemo(
-    () => sortPlayers(filterPlayers(mockPlayers, query, filters), sort),
-    [query, filters, sort],
+    () => sortPlayers(filterPlayers(players, query, filters), sort),
+    [players, query, filters, sort],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PLAYERS_PER_PAGE));
@@ -115,18 +119,53 @@ export function PlayerSearchClient() {
     setPage(1);
   }
 
-  function toggleSave(id: string) {
+  function handleToggleSave(id: string) {
+    if (!collegeId) return;
+
+    const previouslySaved = savedIds.has(id);
     setSavedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
+      if (previouslySaved) next.delete(id);
       else next.add(id);
       return next;
     });
+
+    startTransition(async () => {
+      try {
+        const saved = await toggleSavedPlayerAction(id);
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          if (saved) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+      } catch {
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          if (previouslySaved) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+      }
+    });
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-3xl border border-white/8 bg-white/[0.03] px-6 py-16 text-center">
+        <p className="text-lg font-medium text-zinc-300">
+          Unable to load players
+        </p>
+        <p className="mt-2 text-sm text-zinc-600">
+          Something went wrong while loading player profiles. Please try again
+          in a moment.
+        </p>
+      </div>
+    );
   }
 
   return (
     <>
-      {/* Search bar */}
       <div className="relative mb-6">
         <svg
           className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500"
@@ -147,11 +186,10 @@ export function PlayerSearchClient() {
           value={query}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Search by player name..."
-          className="w-full rounded-3xl border border-white/10 bg-white/[0.04] py-4 pl-14 pr-5 text-base text-white placeholder:text-zinc-500 outline-none backdrop-blur-sm transition-all focus:border-emerald-500/40 focus:bg-white/[0.06] focus:ring-2 focus:ring-emerald-500/15"
+          className="w-full rounded-3xl border border-white/10 bg-zinc-900 py-4 pl-14 pr-5 text-base text-white outline-none transition-all placeholder:text-zinc-500 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/15"
         />
       </div>
 
-      {/* Filters */}
       <div className="mb-8">
         <PlayerSearchFilters
           filters={filters}
@@ -161,7 +199,6 @@ export function PlayerSearchClient() {
         />
       </div>
 
-      {/* Results header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-500">
           <span className="font-medium text-zinc-300">{filtered.length}</span>{" "}
@@ -169,14 +206,18 @@ export function PlayerSearchClient() {
         </p>
 
         <div className="flex items-center gap-3">
-          <label htmlFor="sort" className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <label
+            htmlFor="sort"
+            className="text-xs font-medium uppercase tracking-wider text-zinc-500"
+          >
             Sort
           </label>
           <select
             id="sort"
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as SortOption)}
-            className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-200 outline-none transition-colors focus:border-emerald-500/40"
+            className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-2 text-sm text-zinc-200 outline-none transition-colors focus:border-emerald-500/40"
+            style={{ colorScheme: "dark" }}
           >
             {sortOptions.map((opt) => (
               <option key={opt.value} value={opt.value} className="bg-zinc-900">
@@ -187,7 +228,6 @@ export function PlayerSearchClient() {
         </div>
       </div>
 
-      {/* Results grid */}
       {paginated.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {paginated.map((player) => (
@@ -195,20 +235,19 @@ export function PlayerSearchClient() {
               key={player.id}
               player={player}
               saved={savedIds.has(player.id)}
-              onToggleSave={toggleSave}
+              onToggleSave={handleToggleSave}
             />
           ))}
         </div>
       ) : (
         <div className="rounded-3xl border border-white/8 bg-white/[0.03] px-6 py-16 text-center">
-          <p className="text-lg font-medium text-zinc-400">No players found</p>
+          <p className="text-lg font-medium text-zinc-400">No players found.</p>
           <p className="mt-2 text-sm text-zinc-600">
             Try adjusting your search or filters.
           </p>
         </div>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-10 flex items-center justify-center gap-2">
           <button

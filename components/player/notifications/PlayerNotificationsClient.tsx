@@ -1,35 +1,94 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NotificationItem } from "./NotificationItem";
+import { type PlayerNotification } from "@/lib/player-notifications";
 import {
-  mockPlayerNotifications,
-  type PlayerNotification,
-} from "@/lib/player-notifications";
+  getNotifications,
+  markAllAsRead as markAllAsReadService,
+  markAsRead as markAsReadService,
+  subscribeToNotifications,
+} from "@/lib/notifications-service";
 
 export function PlayerNotificationsClient() {
-  const [notifications, setNotifications] = useState<PlayerNotification[]>(
-    mockPlayerNotifications,
-  );
+  const [notifications, setNotifications] = useState<PlayerNotification[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => item.unread).length,
     [notifications],
   );
 
-  function markAllAsRead() {
+  const upsertNotification = useCallback((notification: PlayerNotification) => {
+    setNotifications((prev) => {
+      const without = prev.filter((item) => item.id !== notification.id);
+      return [notification, ...without].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const next = await getNotifications();
+        if (!cancelled) {
+          setNotifications(next);
+        }
+      } catch {
+        if (!cancelled) {
+          setNotifications([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoaded(true);
+        }
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToNotifications((change) => {
+      upsertNotification(change.notification);
+    });
+    return unsubscribe;
+  }, [upsertNotification]);
+
+  async function markAllAsRead() {
+    const previous = notifications;
     setNotifications((prev) =>
       prev.map((item) => ({ ...item, unread: false })),
     );
+
+    try {
+      await markAllAsReadService();
+    } catch {
+      setNotifications(previous);
+    }
   }
 
-  function markAsRead(id: string) {
+  async function markAsRead(id: string) {
+    const previous = notifications;
     setNotifications((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, unread: false } : item,
       ),
     );
+
+    try {
+      await markAsReadService(id);
+    } catch {
+      setNotifications(previous);
+    }
   }
 
   return (
@@ -42,7 +101,7 @@ export function PlayerNotificationsClient() {
         </p>
         <button
           type="button"
-          onClick={markAllAsRead}
+          onClick={() => void markAllAsRead()}
           disabled={unreadCount === 0}
           className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -50,7 +109,7 @@ export function PlayerNotificationsClient() {
         </button>
       </div>
 
-      {notifications.length === 0 ? (
+      {loaded && notifications.length === 0 ? (
         <div className="rounded-3xl border border-white/8 bg-white/[0.03] px-6 py-16 text-center">
           <h2 className="text-xl font-semibold tracking-tight text-white">
             No Notifications
@@ -72,7 +131,9 @@ export function PlayerNotificationsClient() {
             <NotificationItem
               key={notification.id}
               notification={notification}
-              onOpen={markAsRead}
+              onOpen={(notificationId) => {
+                void markAsRead(notificationId);
+              }}
             />
           ))}
         </div>

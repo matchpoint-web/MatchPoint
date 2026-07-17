@@ -1,13 +1,5 @@
 import Link from "next/link";
-
-const profile = {
-  name: "Alex Tanaka",
-  country: "Japan",
-  graduationYear: "2027",
-  utr: "11.2",
-  gpa: "3.8",
-  completion: 72,
-};
+import { getPlayerDashboardProfile } from "@/lib/player-profile-service";
 
 const dashboardCards = [
   {
@@ -20,7 +12,7 @@ const dashboardCards = [
     title: "Messages",
     description: "Connect directly with coaches and recruiters worldwide.",
     icon: "💬",
-    href: null,
+    href: "/player/messages" as string | null,
   },
   {
     title: "Documents",
@@ -30,27 +22,38 @@ const dashboardCards = [
   },
 ];
 
-export default function PlayerDashboard() {
+export default async function PlayerDashboard() {
+  const profile = await getPlayerDashboardProfile();
+
   return (
     <div className="px-6 py-8 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 p-6 sm:p-8">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-500 sm:h-28 sm:w-28">
-              <svg
-                className="h-12 w-12 sm:h-14 sm:w-14"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5 text-zinc-500 sm:h-28 sm:w-28">
+              {profile.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.profileImageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
                 />
-              </svg>
+              ) : (
+                <svg
+                  className="h-12 w-12 sm:h-14 sm:w-14"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+                  />
+                </svg>
+              )}
             </div>
 
             <div className="flex-1 text-center sm:text-left">
@@ -90,8 +93,9 @@ export default function PlayerDashboard() {
                 {profile.completion}%
               </p>
               <p className="mt-2 max-w-md text-sm text-zinc-500">
-                Complete 2 more sections to improve your visibility to college
-                coaches.
+                {profile.remainingSections === 0
+                  ? "Your recruiting profile looks complete."
+                  : `Complete ${profile.remainingSections} more section${profile.remainingSections === 1 ? "" : "s"} to improve your visibility to college coaches.`}
               </p>
             </div>
             <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/5 sm:max-w-xs">

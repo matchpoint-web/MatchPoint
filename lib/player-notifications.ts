@@ -1,8 +1,20 @@
+/** Known storage type ids. New events can add string ids without DB migrations. */
+export type NotificationTypeId = string;
+
+export const NOTIFICATION_TYPES = {
+  newMessage: "new_message",
+  playerSaved: "player_saved",
+  profileView: "profile_view",
+  reminder: "reminder",
+} as const;
+
+/** Display labels used by the existing notifications UI. */
 export type PlayerNotificationType =
   | "Profile Viewed"
   | "Saved by College"
   | "New Message"
-  | "Profile Completion Reminder";
+  | "Profile Completion Reminder"
+  | string;
 
 export type PlayerNotification = {
   id: string;
@@ -11,67 +23,59 @@ export type PlayerNotification = {
   description: string;
   createdAt: string;
   unread: boolean;
+  metadata?: Record<string, unknown> | null;
 };
 
-export const mockPlayerNotifications: PlayerNotification[] = [
-  {
-    id: "pn1",
-    type: "Profile Viewed",
-    title: "Stanford University viewed your profile",
-    description:
-      "A college coach recently reviewed your recruiting profile.",
-    createdAt: "2026-07-16T12:30:00.000Z",
-    unread: true,
-  },
-  {
-    id: "pn2",
-    type: "Saved by College",
-    title: "UCLA saved your profile",
-    description:
-      "You were added to a college recruiting watch list.",
-    createdAt: "2026-07-16T09:10:00.000Z",
-    unread: true,
-  },
-  {
-    id: "pn3",
-    type: "New Message",
-    title: "New message from University of Texas",
-    description:
-      "A coach sent you a recruiting message. Open Messages to reply.",
-    createdAt: "2026-07-15T18:45:00.000Z",
-    unread: true,
-  },
-  {
-    id: "pn4",
-    type: "Profile Completion Reminder",
-    title: "Complete your recruiting profile",
-    description:
-      "Add missing details to improve your visibility to college coaches.",
-    createdAt: "2026-07-14T11:00:00.000Z",
-    unread: false,
-  },
-  {
-    id: "pn5",
-    type: "Profile Viewed",
-    title: "University of Florida viewed your profile",
-    description: "Your profile appeared in a college coach search.",
-    createdAt: "2026-07-13T16:20:00.000Z",
-    unread: false,
-  },
-];
+export type CreateNotificationInput = {
+  userId: string;
+  type: NotificationTypeId;
+  title: string;
+  message: string;
+  metadata?: Record<string, unknown> | null;
+};
+
+const STORAGE_TO_UI: Record<string, string> = {
+  new_message: "New Message",
+  player_saved: "Saved by College",
+  profile_view: "Profile Viewed",
+  reminder: "Profile Completion Reminder",
+};
+
+const UI_TO_STORAGE: Record<string, string> = {
+  "New Message": "new_message",
+  "Saved by College": "player_saved",
+  "Profile Viewed": "profile_view",
+  "Profile Completion Reminder": "reminder",
+};
+
+export function toUiNotificationType(type: string): PlayerNotificationType {
+  return STORAGE_TO_UI[type] ?? type;
+}
+
+export function toStorageNotificationType(
+  type: PlayerNotificationType,
+): NotificationTypeId {
+  return UI_TO_STORAGE[type] ?? type;
+}
 
 export function getNotificationHref(
   type: PlayerNotificationType,
 ): string {
   switch (type) {
     case "Profile Viewed":
+    case "profile_view":
       return "/player/profile";
     case "Saved by College":
+    case "player_saved":
       return "/player/colleges";
     case "New Message":
+    case "new_message":
       return "/player/messages";
     case "Profile Completion Reminder":
+    case "reminder":
       return "/player/profile/edit";
+    default:
+      return "/player/notifications";
   }
 }
 

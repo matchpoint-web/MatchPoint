@@ -9,12 +9,14 @@ type ConversationListProps = {
   conversations: Conversation[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  emptyMessage?: string;
 };
 
 export function ConversationList({
   conversations,
   activeId,
   onSelect,
+  emptyMessage = "No conversations yet.",
 }: ConversationListProps) {
   const inbox = conversations.filter((conversation) => !conversation.isArchived);
 
@@ -31,8 +33,8 @@ export function ConversationList({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {inbox.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-zinc-500">
-            No conversations yet.
+          <p className="whitespace-pre-line px-4 py-10 text-center text-sm text-zinc-500">
+            {emptyMessage}
           </p>
         ) : (
           inbox.map((conversation) => {

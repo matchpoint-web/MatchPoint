@@ -1,27 +1,61 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConversationList } from "./ConversationList";
-import { ChatWindow } from "./ChatWindow";
+import { ChatWindow, type MessagesViewerRole } from "./ChatWindow";
+import { type Conversation } from "@/lib/college-messages";
 import {
-  mockConversations,
-  type ChatMessage,
-  type Conversation,
-} from "@/lib/college-messages";
+  getConversations,
+  getMessages,
+  sendMessage as sendMessageService,
+  subscribeToMessages,
+} from "@/lib/messages-service";
 
-export function MessagesClient() {
-  const [conversations, setConversations] =
-    useState<Conversation[]>(mockConversations);
+type MessagesClientProps = {
+  initialConversationId?: string | null;
+  viewerRole?: MessagesViewerRole;
+};
+
+const PLAYER_EMPTY_INBOX =
+  "College coaches can contact you here.\nOnce a coach sends you a message, you can reply.";
+
+export function MessagesClient({
+  initialConversationId = null,
+  viewerRole = "college",
+}: MessagesClientProps) {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const active = useMemo(
     () => conversations.find((conversation) => conversation.id === activeId) ?? null,
     [conversations, activeId],
   );
 
-  function selectConversation(id: string) {
+  const appendMessage = useCallback(
+    (conversationId: string, message: Conversation["messages"][number]) => {
+      setConversations((prev) =>
+        prev.map((conversation) => {
+          if (conversation.id !== conversationId) return conversation;
+          if (conversation.messages.some((existing) => existing.id === message.id)) {
+            return conversation;
+          }
+          return {
+            ...conversation,
+            lastMessage: message.body,
+            lastMessageAt: message.timestamp,
+            unreadCount: 0,
+            messages: [...conversation.messages, message],
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  const selectConversation = useCallback((id: string) => {
     setActiveId(id);
     setMobileShowChat(true);
     setDraft("");
@@ -32,34 +66,105 @@ export function MessagesClient() {
           : conversation,
       ),
     );
-  }
 
-  function sendMessage(body: string) {
+    void (async () => {
+      try {
+        const [messages, list] = await Promise.all([
+          getMessages(id),
+          getConversations(),
+        ]);
+
+        setConversations(() =>
+          list.map((conversation) =>
+            conversation.id === id
+              ? {
+                  ...conversation,
+                  messages,
+                  lastMessage:
+                    messages[messages.length - 1]?.body ??
+                    conversation.lastMessage,
+                  lastMessageAt:
+                    messages[messages.length - 1]?.timestamp ??
+                    conversation.lastMessageAt,
+                  unreadCount: 0,
+                }
+              : conversation,
+          ),
+        );
+      } catch {
+        // Keep existing thread state if refresh fails.
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const next = await getConversations();
+        if (cancelled) return;
+        setConversations(next);
+        setLoaded(true);
+
+        if (initialConversationId) {
+          let list = next;
+          if (!list.some((c) => c.id === initialConversationId)) {
+            list = await getConversations();
+            if (cancelled) return;
+            setConversations(list);
+          }
+          if (!cancelled) {
+            selectConversation(initialConversationId);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setConversations([]);
+          setLoaded(true);
+        }
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialConversationId, selectConversation]);
+
+  useEffect(() => {
+    if (!activeId) return;
+
+    const unsubscribe = subscribeToMessages(activeId, (message) => {
+      appendMessage(activeId, message);
+    });
+
+    return unsubscribe;
+  }, [activeId, appendMessage]);
+
+  async function sendMessage(body: string) {
     if (!active) return;
 
-    const message: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      conversationId: active.id,
-      sender: "coach",
-      body,
-      timestamp: new Date().toISOString(),
-      seen: false,
-    };
+    try {
+      const message = await sendMessageService(active.id, body);
+      appendMessage(active.id, message);
+      setDraft("");
+    } catch {
+      // Keep draft so the user can retry.
+    }
+  }
 
-    setConversations((prev) =>
-      prev.map((conversation) =>
-        conversation.id === active.id
-          ? {
-              ...conversation,
-              lastMessage: body,
-              lastMessageAt: message.timestamp,
-              unreadCount: 0,
-              messages: [...conversation.messages, message],
-            }
-          : conversation,
-      ),
+  if (viewerRole === "player" && loaded && conversations.length === 0) {
+    return (
+      <div className="rounded-3xl border border-white/8 bg-white/[0.03] px-6 py-16 text-center">
+        <h2 className="text-xl font-semibold tracking-tight text-white">
+          Messages
+        </h2>
+        <p className="mx-auto mt-3 max-w-md whitespace-pre-line text-sm text-zinc-500">
+          {PLAYER_EMPTY_INBOX}
+        </p>
+      </div>
     );
-    setDraft("");
   }
 
   return (
@@ -73,6 +178,9 @@ export function MessagesClient() {
           conversations={conversations}
           activeId={activeId}
           onSelect={selectConversation}
+          emptyMessage={
+            viewerRole === "player" ? PLAYER_EMPTY_INBOX : "No conversations yet."
+          }
         />
       </div>
 
@@ -87,6 +195,7 @@ export function MessagesClient() {
           onDraftChange={setDraft}
           onSend={sendMessage}
           onBack={() => setMobileShowChat(false)}
+          viewerRole={viewerRole}
         />
       </div>
     </div>

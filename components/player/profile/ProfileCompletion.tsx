@@ -23,8 +23,9 @@ export function ProfileCompletion({
             </span>
           </p>
           <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-500">
-            Complete {remainingSections} more sections to improve your visibility
-            to college coaches.
+            {remainingSections === 0
+              ? "Your recruiting profile looks complete."
+              : `Complete ${remainingSections} more section${remainingSections === 1 ? "" : "s"} to improve your visibility to college coaches.`}
           </p>
         </div>
 

@@ -9,16 +9,17 @@ export type ProfileStrength = {
   message: string;
 };
 
+/** Fallback only — prefer buildProfileStrength() from player-profile-service. */
 export const defaultProfileStrength: ProfileStrength = {
-  score: 72,
+  score: 0,
   items: [
-    { label: "Profile Photo", complete: true },
-    { label: "Highlight Videos", complete: true },
-    { label: "Academic Information", complete: true },
-    { label: "UTR Verified", complete: true },
-    { label: "SAT Score Missing", complete: false },
-    { label: "Updated Transcript Needed", complete: false },
+    { label: "Profile Photo Missing", complete: false },
+    { label: "Biography Missing", complete: false },
+    { label: "Academic Information Incomplete", complete: false },
+    { label: "UTR Missing", complete: false },
+    { label: "Physical Stats Incomplete", complete: false },
+    { label: "Playing Hand Missing", complete: false },
   ],
   message:
-    "Complete 2 more sections to improve your visibility to college coaches.",
+    "Complete your profile to improve your visibility to college coaches.",
 };

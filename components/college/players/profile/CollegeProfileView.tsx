@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { GlassCard } from "@/components/player/GlassCard";
 import { SectionTitle } from "@/components/player/SectionTitle";
@@ -9,6 +10,7 @@ import { type CollegePlayerProfile } from "@/lib/college-player-profile";
 import { trackPlayerView } from "@/lib/dashboard";
 import { type CoachNote } from "@/lib/coach-notes";
 import { toggleSavedPlayerAction } from "@/lib/saved-players/actions";
+import { getOrCreateConversation } from "@/lib/messages-service";
 
 type CollegeProfileViewProps = {
   profile: CollegePlayerProfile;
@@ -23,8 +25,10 @@ export function CollegeProfileView({
   initiallySaved,
   initialCoachNote = null,
 }: CollegeProfileViewProps) {
+  const router = useRouter();
   const [saved, setSaved] = useState(initiallySaved);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [isMessaging, setIsMessaging] = useState(false);
 
   useEffect(() => {
     setSaved(initiallySaved);
@@ -45,6 +49,18 @@ export function CollegeProfileView({
         setSaved(previouslySaved);
       }
     });
+  }
+
+  async function handleMessagePlayer() {
+    if (!collegeId || isMessaging) return;
+
+    setIsMessaging(true);
+    try {
+      const conversationId = await getOrCreateConversation(profile.id);
+      router.push(`/college/messages?c=${encodeURIComponent(conversationId)}`);
+    } catch {
+      setIsMessaging(false);
+    }
   }
 
   const details = [
@@ -117,17 +133,28 @@ export function CollegeProfileView({
                   ))}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleToggleSave}
-                  className={`rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-300 ${
-                    saved
-                      ? "border border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
-                      : "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/25"
-                  }`}
-                >
-                  {saved ? "Saved" : "Save Player"}
-                </button>
+                <div className="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <button
+                    type="button"
+                    onClick={handleToggleSave}
+                    disabled={isPending || !collegeId}
+                    className={`rounded-2xl px-6 py-3 text-sm font-semibold transition-all duration-300 disabled:opacity-60 ${
+                      saved
+                        ? "border border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                        : "bg-emerald-500 text-black hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/25"
+                    }`}
+                  >
+                    {saved ? "Saved" : "Save Player"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleMessagePlayer()}
+                    disabled={!collegeId || isMessaging}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10 disabled:opacity-60"
+                  >
+                    {isMessaging ? "Opening…" : "Message Player"}
+                  </button>
+                </div>
               </div>
             </div>
           </GlassCard>

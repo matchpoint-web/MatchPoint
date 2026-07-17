@@ -8,15 +8,25 @@ import {
   type Conversation,
 } from "@/lib/college-messages";
 
+export type MessagesViewerRole = "college" | "player";
+
 type ChatWindowProps = {
   conversation: Conversation | null;
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (body: string) => void;
   onBack?: () => void;
+  viewerRole?: MessagesViewerRole;
+  emptySelectionMessage?: string;
 };
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({
+  message,
+  viewerRole,
+}: {
+  message: ChatMessage;
+  viewerRole: MessagesViewerRole;
+}) {
   if (message.sender === "system") {
     return (
       <div className="flex justify-center py-2">
@@ -27,24 +37,27 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     );
   }
 
-  const isCoach = message.sender === "coach";
+  const isOwn =
+    viewerRole === "college"
+      ? message.sender === "coach"
+      : message.sender === "player";
 
   return (
-    <div className={`flex ${isCoach ? "justify-end" : "justify-start"}`}>
+    <div className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[85%] rounded-3xl px-4 py-3 sm:max-w-[75%] ${
-          isCoach
+          isOwn
             ? "rounded-br-lg bg-emerald-500 text-black"
             : "rounded-bl-lg border border-white/10 bg-zinc-800/90 text-zinc-100"
         }`}
       >
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider opacity-70">
-          {isCoach ? "Coach" : "Player"}
+          {message.sender === "coach" ? "Coach" : "Player"}
         </p>
         <p className="text-sm leading-relaxed">{message.body}</p>
         <p
           className={`mt-1.5 text-[10px] ${
-            isCoach ? "text-right text-black/50" : "text-zinc-500"
+            isOwn ? "text-right text-black/50" : "text-zinc-500"
           }`}
         >
           {formatMessageTime(message.timestamp)}
@@ -60,6 +73,8 @@ export function ChatWindow({
   onDraftChange,
   onSend,
   onBack,
+  viewerRole = "college",
+  emptySelectionMessage = "Select a conversation to start messaging.",
 }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -71,7 +86,7 @@ export function ChatWindow({
     return (
       <div className="flex flex-1 items-center justify-center bg-black/40 px-6">
         <p className="text-center text-base font-medium text-zinc-400 sm:text-lg">
-          Select a conversation to start messaging.
+          {emptySelectionMessage}
         </p>
       </div>
     );
@@ -82,6 +97,15 @@ export function ChatWindow({
     if (!body) return;
     onSend(body);
   }
+
+  const subtitleParts = [
+    [conversation.country, conversation.countryFlag].filter(Boolean).join(" "),
+    conversation.graduationYear
+      ? viewerRole === "college"
+        ? `Class of ${conversation.graduationYear}`
+        : conversation.graduationYear
+      : null,
+  ].filter(Boolean);
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-black/30">
@@ -107,32 +131,39 @@ export function ChatWindow({
             <p className="truncate font-semibold text-white">
               {conversation.playerName}
             </p>
-            <p className="truncate text-xs text-zinc-500">
-              {conversation.country} {conversation.countryFlag} · Class of{" "}
-              {conversation.graduationYear}
-            </p>
+            {subtitleParts.length > 0 ? (
+              <p className="truncate text-xs text-zinc-500">
+                {subtitleParts.join(" · ")}
+              </p>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href={`/college/players/${conversation.playerId}`}
-            className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-emerald-400"
-          >
-            View Profile
-          </Link>
-          <Link
-            href="/college/saved"
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-white/10"
-          >
-            Saved Players
-          </Link>
-        </div>
+        {viewerRole === "college" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/college/players/${conversation.playerId}`}
+              className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-emerald-400"
+            >
+              View Profile
+            </Link>
+            <Link
+              href="/college/saved"
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-white/10"
+            >
+              Saved Players
+            </Link>
+          </div>
+        ) : null}
       </header>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-5 sm:px-6">
         {conversation.messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble
+            key={message.id}
+            message={message}
+            viewerRole={viewerRole}
+          />
         ))}
         <div ref={bottomRef} />
       </div>

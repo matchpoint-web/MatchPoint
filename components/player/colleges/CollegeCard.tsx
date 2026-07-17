@@ -1,23 +1,59 @@
 "use client";
 
 import Link from "next/link";
-import { type Player } from "@/lib/player-service";
+import {
+  formatAcademicRanking,
+  formatCostOfAttendance,
+  type MockCollege,
+} from "@/lib/mock-colleges";
 
-type PlayerCardProps = {
-  player: Player;
+type CollegeCardProps = {
+  college: MockCollege;
   saved: boolean;
   onToggleSave: (id: string) => void;
-  /** `search` shows Save/Saved; `saved` shows Remove Player. */
-  mode?: "search" | "saved";
 };
 
-export function PlayerCard({
-  player,
+export function CollegeCard({
+  college,
   saved,
   onToggleSave,
-  mode = "search",
-}: PlayerCardProps) {
-  const isSavedMode = mode === "saved";
+}: CollegeCardProps) {
+  const stats: { label: string; value: string }[] = [
+    { label: "NCAA Division", value: college.division },
+    ...(college.conference
+      ? [{ label: "Conference", value: college.conference }]
+      : []),
+    { label: "State", value: college.state },
+    ...(college.academicRanking != null
+      ? [
+          {
+            label: "Academic Ranking",
+            value: formatAcademicRanking(college.academicRanking),
+          },
+        ]
+      : []),
+    ...(college.averageTeamUtr != null
+      ? [
+          {
+            label: "Avg Team UTR",
+            value: college.averageTeamUtr.toFixed(1),
+          },
+        ]
+      : []),
+    { label: "Roster Size", value: String(college.rosterSize) },
+    {
+      label: "International",
+      value: String(college.internationalPlayers),
+    },
+    ...(college.costOfAttendance != null
+      ? [
+          {
+            label: "Cost of Attendance",
+            value: formatCostOfAttendance(college.costOfAttendance),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 backdrop-blur-sm transition-all duration-500 hover:-translate-y-1 hover:border-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/5">
@@ -26,28 +62,23 @@ export function PlayerCard({
       <div className="relative flex flex-1 flex-col p-5 sm:p-6">
         <div className="mb-4 flex items-start gap-4">
           <div
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500/30 bg-gradient-to-br from-zinc-800 to-zinc-900 text-sm font-bold text-emerald-400/90"
-            aria-label={`${player.name} profile photo`}
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-900 text-xs font-bold tracking-wide text-emerald-400/90"
+            aria-label={`${college.name} logo`}
           >
-            {player.initials}
+            {college.initials}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-lg font-semibold tracking-tight text-white">
-              {player.name}
+              {college.name}
             </h3>
             <p className="text-sm text-zinc-500">
-              {player.country} {player.countryFlag}
+              {college.city}, {college.state}
             </p>
           </div>
         </div>
 
         <div className="mb-5 grid grid-cols-2 gap-2">
-          {[
-            { label: "Graduation Year", value: player.graduationYear },
-            { label: "UTR", value: player.utr.toFixed(1) },
-            { label: "GPA", value: player.gpa.toFixed(1) },
-            { label: "Country", value: player.country },
-          ].map((stat) => (
+          {stats.map((stat) => (
             <div
               key={stat.label}
               className="rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2"
@@ -64,23 +95,21 @@ export function PlayerCard({
 
         <div className="mt-auto flex gap-2">
           <Link
-            href={`/college/players/${player.id}`}
+            href={`/player/colleges/${college.id}`}
             className="flex-1 rounded-2xl bg-emerald-500 px-4 py-2.5 text-center text-sm font-semibold text-black transition-all duration-300 hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/20"
           >
-            View Profile
+            View Details
           </Link>
           <button
             type="button"
-            onClick={() => onToggleSave(player.id)}
+            onClick={() => onToggleSave(college.id)}
             className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-              isSavedMode
-                ? "border-white/10 bg-white/5 text-zinc-300 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
-                : saved
-                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
-                  : "border-white/10 bg-white/5 text-zinc-300 hover:border-emerald-500/30 hover:bg-white/10"
+              saved
+                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                : "border-white/10 bg-white/5 text-zinc-300 hover:border-emerald-500/30 hover:bg-white/10"
             }`}
           >
-            {isSavedMode ? "Remove Player" : saved ? "Saved" : "Save Player"}
+            {saved ? "Saved" : "Save"}
           </button>
         </div>
       </div>
