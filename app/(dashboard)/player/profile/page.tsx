@@ -9,17 +9,30 @@ import { InfoGridSection } from "@/components/player/profile/InfoGridSection";
 import { ProfileCompletion } from "@/components/player/profile/ProfileCompletion";
 import { ProfileHero } from "@/components/player/profile/ProfileHero";
 import { VideoGallery } from "@/components/player/profile/VideoGallery";
-import {
-  academicInfo,
-  achievements,
-  documents,
-  highlightVideos,
-  playerProfile,
-  tennisInfo,
-} from "@/lib/player-profile";
-import { defaultProfileStrength } from "@/lib/profile-strength";
+import { getDefaultDocumentsState } from "@/lib/player-documents";
+import { getPlayerDocuments } from "@/lib/player-documents-service";
+import { getPlayerProfileView } from "@/lib/player-profile-service";
 
-export default function PlayerProfilePage() {
+export default async function PlayerProfilePage() {
+  const view = await getPlayerProfileView();
+
+  let documents = getDefaultDocumentsState();
+  try {
+    documents = await getPlayerDocuments();
+  } catch {
+    documents = getDefaultDocumentsState();
+  }
+
+  const {
+    profile,
+    academicInfo,
+    tennisInfo,
+    highlightVideos,
+    achievements,
+    strength,
+    remainingSections,
+  } = view;
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white">
       <AmbientBackground />
@@ -51,14 +64,14 @@ export default function PlayerProfilePage() {
 
           <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
             <div className="lg:col-span-2">
-              <ProfileHero profile={playerProfile} />
+              <ProfileHero profile={profile} />
             </div>
-            <ProfileStrengthCard strength={defaultProfileStrength} />
+            <ProfileStrengthCard strength={strength} />
           </div>
 
           <section>
             <SectionTitle title="About Me" />
-            <AboutSection text={playerProfile.about} />
+            <AboutSection text={profile.about} />
           </section>
 
           <section>
@@ -86,11 +99,14 @@ export default function PlayerProfilePage() {
 
           <section>
             <SectionTitle title="Documents" />
-            <DocumentsSection documents={documents} />
+            <DocumentsSection initialDocuments={documents} />
           </section>
 
           <section>
-            <ProfileCompletion completion={playerProfile.completion} />
+            <ProfileCompletion
+              completion={profile.completion}
+              remainingSections={remainingSections}
+            />
           </section>
         </div>
       </main>

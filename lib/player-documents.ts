@@ -1,4 +1,9 @@
-export const PLAYER_DOCUMENTS_STORAGE_KEY = "matchpoint-player-documents";
+/**
+ * Player document types, definitions, and completion helpers.
+ * Persistence lives in lib/player-documents-service.ts (Supabase).
+ */
+
+export const PLAYER_DOCUMENTS_BUCKET = "player-documents";
 
 export type DocumentKind = "file" | "url";
 
@@ -8,6 +13,14 @@ export type DocumentTypeId =
   | "english-test"
   | "resume"
   | "highlight-video";
+
+/** Storage / DB document_type values */
+export type StorageDocumentType =
+  | "transcript"
+  | "sat_act"
+  | "english_test"
+  | "resume"
+  | "highlight_video";
 
 export type DocumentDefinition = {
   id: DocumentTypeId;
@@ -22,7 +35,7 @@ export type UploadedDocument = {
   id: DocumentTypeId;
   /** Display name for file uploads */
   fileName?: string;
-  /** Highlight video URL */
+  /** Highlight video URL (or signed file URL when available) */
   url?: string;
   uploadedAt: string;
 };
@@ -69,66 +82,39 @@ export const DOCUMENT_DEFINITIONS: DocumentDefinition[] = [
   },
 ];
 
-function isUploadedDocument(value: unknown): value is UploadedDocument {
-  if (!value || typeof value !== "object") return false;
-  const doc = value as Record<string, unknown>;
-  return (
-    typeof doc.id === "string" &&
-    typeof doc.uploadedAt === "string" &&
-    DOCUMENT_DEFINITIONS.some((def) => def.id === doc.id)
-  );
+const UI_TO_STORAGE: Record<DocumentTypeId, StorageDocumentType> = {
+  transcript: "transcript",
+  "sat-act": "sat_act",
+  "english-test": "english_test",
+  resume: "resume",
+  "highlight-video": "highlight_video",
+};
+
+const STORAGE_TO_UI: Record<StorageDocumentType, DocumentTypeId> = {
+  transcript: "transcript",
+  sat_act: "sat-act",
+  english_test: "english-test",
+  resume: "resume",
+  highlight_video: "highlight-video",
+};
+
+export function toStorageDocumentType(
+  id: DocumentTypeId,
+): StorageDocumentType {
+  return UI_TO_STORAGE[id];
 }
 
-function normalizeState(parsed: unknown): PlayerDocumentsState {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return {};
+export function toUiDocumentType(
+  type: string,
+): DocumentTypeId | null {
+  if (type in STORAGE_TO_UI) {
+    return STORAGE_TO_UI[type as StorageDocumentType];
   }
-
-  const next: PlayerDocumentsState = {};
-  for (const [key, value] of Object.entries(parsed)) {
-    if (isUploadedDocument(value) && value.id === key) {
-      next[key as DocumentTypeId] = value;
-    }
-  }
-  return next;
+  return null;
 }
 
 export function getDefaultDocumentsState(): PlayerDocumentsState {
   return {};
-}
-
-export function readPlayerDocuments(): PlayerDocumentsState {
-  if (typeof window === "undefined") return getDefaultDocumentsState();
-  try {
-    const raw = localStorage.getItem(PLAYER_DOCUMENTS_STORAGE_KEY);
-    if (!raw) return getDefaultDocumentsState();
-    return normalizeState(JSON.parse(raw) as unknown);
-  } catch {
-    return getDefaultDocumentsState();
-  }
-}
-
-export function writePlayerDocuments(state: PlayerDocumentsState): void {
-  localStorage.setItem(PLAYER_DOCUMENTS_STORAGE_KEY, JSON.stringify(state));
-}
-
-export function upsertPlayerDocument(
-  state: PlayerDocumentsState,
-  document: UploadedDocument,
-): PlayerDocumentsState {
-  const next = { ...state, [document.id]: document };
-  writePlayerDocuments(next);
-  return next;
-}
-
-export function removePlayerDocument(
-  state: PlayerDocumentsState,
-  id: DocumentTypeId,
-): PlayerDocumentsState {
-  const next = { ...state };
-  delete next[id];
-  writePlayerDocuments(next);
-  return next;
 }
 
 export function getUploadedCount(state: PlayerDocumentsState): number {
@@ -168,4 +154,8 @@ export function isValidHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function isDocumentTypeId(value: string): value is DocumentTypeId {
+  return DOCUMENT_DEFINITIONS.some((def) => def.id === value);
 }
