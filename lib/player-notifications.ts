@@ -60,7 +60,39 @@ export function toStorageNotificationType(
 
 export function getNotificationHref(
   type: PlayerNotificationType,
+  options?: {
+    portal?: "player" | "college";
+    metadata?: Record<string, unknown> | null;
+  },
 ): string {
+  const portal = options?.portal ?? "player";
+  const metadata = options?.metadata ?? null;
+  const conversationId =
+    typeof metadata?.conversationId === "string"
+      ? metadata.conversationId
+      : null;
+  const playerId =
+    typeof metadata?.playerId === "string" ? metadata.playerId : null;
+
+  if (portal === "college") {
+    switch (type) {
+      case "New Message":
+      case "new_message":
+        return conversationId
+          ? `/college/messages?c=${encodeURIComponent(conversationId)}`
+          : "/college/messages";
+      case "Profile Completion Reminder":
+      case "reminder":
+        return playerId
+          ? `/college/players/${encodeURIComponent(playerId)}`
+          : "/college/players";
+      default:
+        return playerId
+          ? `/college/players/${encodeURIComponent(playerId)}`
+          : "/college/players";
+    }
+  }
+
   switch (type) {
     case "Profile Viewed":
     case "profile_view":
