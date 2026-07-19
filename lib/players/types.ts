@@ -10,6 +10,7 @@ export type SavePlayerProfileState = {
   profileImageUrl?: string | null;
 };
 
+/** Domain/profile edit shape (coerced empties). Not a raw DB row — see Tables<"players">. */
 export type PlayerProfileRow = {
   id: string | null;
   user_id: string;

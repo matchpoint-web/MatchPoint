@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/lib/database.types";
 import {
   getEmptyCollegeProfile,
   isNcaaDivision,
@@ -6,26 +7,7 @@ import {
   type NcaaDivision,
 } from "@/lib/college-profile";
 
-export type CollegeRow = {
-  id: string;
-  user_id: string | null;
-  school_name: string;
-  division: string | null;
-  location: string | null;
-  conference: string | null;
-  state: string | null;
-  city: string | null;
-  website: string | null;
-  head_coach: string | null;
-  assistant_coach: string | null;
-  contact_email: string | null;
-  about_program: string | null;
-  facilities: string | null;
-  recruiting_information: string | null;
-  logo_url: string | null;
-  created_at: string;
-  updated_at?: string;
-};
+export type CollegeRow = Tables<"colleges">;
 
 const COLLEGE_SELECT =
   "id, user_id, school_name, division, location, conference, state, city, website, head_coach, assistant_coach, contact_email, about_program, facilities, recruiting_information, logo_url, created_at, updated_at";

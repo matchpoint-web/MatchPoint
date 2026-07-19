@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import type { Tables } from "@/lib/database.types";
 import type { PreferredDivision } from "@/lib/players";
 import type {
   ChatMessage,
@@ -10,36 +11,23 @@ import { notifyNewMessage } from "@/lib/notifications-service";
 
 type SenderRole = "player" | "college";
 
-type MessageRow = {
-  id: string;
-  conversation_id: string;
-  sender_user_id: string;
-  sender_role: string;
-  message: string;
-  created_at: string;
-};
+type MessageRow = Tables<"messages">;
 
-type PlayerEmbed = {
-  id: string;
-  full_name: string | null;
-  nationality: string | null;
-  graduation_year: number | null;
-  utr: number | string | null;
-  gpa: number | string | null;
-};
+type PlayerEmbed = Pick<
+  Tables<"players">,
+  "id" | "full_name" | "nationality" | "graduation_year" | "utr" | "gpa"
+>;
 
-type CollegeEmbed = {
-  id: string;
-  school_name: string | null;
-  location: string | null;
-  division: string | null;
-};
+type CollegeEmbed = Pick<
+  Tables<"colleges">,
+  "id" | "school_name" | "location" | "division"
+>;
 
-type ConversationRow = {
-  id: string;
-  player_id: string;
-  college_id: string;
-  created_at: string;
+/** Conversation list row including joined player/college embeds. */
+type ConversationRow = Pick<
+  Tables<"conversations">,
+  "id" | "player_id" | "college_id" | "created_at"
+> & {
   players: PlayerEmbed | PlayerEmbed[] | null;
   colleges: CollegeEmbed | CollegeEmbed[] | null;
 };

@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/lib/database.types";
 import { getCurrentCollegeId } from "@/lib/college-profile-service";
 import { getPlayersByIds, type Player } from "@/lib/player-service";
 
-type RecentlyViewedRow = {
-  player_id: string;
-  viewed_at: string;
-};
+type RecentlyViewedRow = Pick<
+  Tables<"recently_viewed_players">,
+  "player_id" | "viewed_at"
+>;
 
 /**
  * Upsert a recently viewed player for the authenticated college.

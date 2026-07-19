@@ -1,20 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/lib/database.types";
 
 export { getCurrentCollegeId } from "@/lib/college-profile-service";
 
-export type SavedPlayerRecord = {
-  id: string;
-  college_id: string;
-  player_id: string;
-  created_at: string;
-};
+export type SavedPlayerRecord = Tables<"saved_players">;
 
-type SavedPlayerRow = {
-  id: string;
-  college_id: string;
-  player_id: string;
-  created_at: string;
-};
+type SavedPlayerRow = Tables<"saved_players">;
 
 export async function getSavedPlayers(
   collegeId: string,

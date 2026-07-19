@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/lib/database.types";
 import {
   DOCUMENT_DEFINITIONS,
   PLAYER_DOCUMENTS_BUCKET,
@@ -13,16 +14,7 @@ import {
 
 const SIGNED_URL_SECONDS = 60 * 60;
 
-type PlayerDocumentRow = {
-  id: string;
-  player_id: string;
-  document_type: string;
-  file_name: string | null;
-  storage_path: string | null;
-  public_url: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type PlayerDocumentRow = Tables<"player_documents">;
 
 export type DocumentMetadataInput = {
   fileName: string | null;

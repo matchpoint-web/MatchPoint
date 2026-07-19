@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/lib/database.types";
 import {
   type AcademicTest,
   type Player,
@@ -47,22 +48,7 @@ export type PlayerDetail = Player & {
   profileImageUrl: string | null;
 };
 
-type PlayerRow = {
-  id: string;
-  full_name: string;
-  nationality: string | null;
-  graduation_year: number | null;
-  utr: number | string | null;
-  gpa: number | string | null;
-  height: number | string | null;
-  weight: number | string | null;
-  dominant_hand: string | null;
-  backhand: string | null;
-  date_of_birth: string | null;
-  bio: string | null;
-  profile_image_url: string | null;
-  created_at: string;
-};
+type PlayerRow = Tables<"players">;
 
 const PLAYER_SELECT =
   "id, full_name, nationality, graduation_year, utr, gpa, height, weight, dominant_hand, backhand, date_of_birth, bio, profile_image_url, created_at";
@@ -180,15 +166,11 @@ function mapRowToPlayerDetail(row: PlayerRow): PlayerDetail {
   const dominantHand = row.dominant_hand?.trim() || base.handedness;
   const backhand = row.backhand?.trim() || "—";
   const heightLabel =
-    row.height != null && row.height !== ""
-      ? `${toNumber(row.height)} cm`
-      : "—";
+    row.height != null ? `${toNumber(row.height)} cm` : "—";
   const gpaLabel =
-    row.gpa != null && row.gpa !== ""
-      ? `${toNumber(row.gpa).toFixed(1)} / 4.0`
-      : "—";
+    row.gpa != null ? `${toNumber(row.gpa).toFixed(1)} / 4.0` : "—";
   const utrLabel =
-    row.utr != null && row.utr !== "" ? toNumber(row.utr).toFixed(1) : "—";
+    row.utr != null ? toNumber(row.utr).toFixed(1) : "—";
 
   return {
     ...base,

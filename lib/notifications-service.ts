@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import type { Json, Tables } from "@/lib/database.types";
 import {
   NOTIFICATION_TYPES,
   toUiNotificationType,
@@ -6,16 +7,17 @@ import {
   type PlayerNotification,
 } from "@/lib/player-notifications";
 
-type NotificationRow = {
-  id: string;
-  user_id: string;
-  type: string;
-  title: string;
-  message: string;
-  metadata: Record<string, unknown> | null;
-  is_read: boolean;
-  created_at: string;
-};
+type NotificationRow = Tables<"notifications">;
+
+function metadataToRecord(
+  metadata: Json | null,
+): Record<string, unknown> | null {
+  if (metadata == null) return null;
+  if (typeof metadata === "object" && !Array.isArray(metadata)) {
+    return metadata as Record<string, unknown>;
+  }
+  return null;
+}
 
 function mapRow(row: NotificationRow): PlayerNotification {
   return {
@@ -25,7 +27,7 @@ function mapRow(row: NotificationRow): PlayerNotification {
     description: row.message,
     createdAt: row.created_at,
     unread: !row.is_read,
-    metadata: row.metadata,
+    metadata: metadataToRecord(row.metadata),
   };
 }
 
@@ -68,7 +70,7 @@ async function createNotification(
     notification_type: input.type.trim(),
     notification_title: input.title.trim(),
     notification_message: input.message.trim(),
-    notification_metadata: input.metadata ?? null,
+    notification_metadata: (input.metadata ?? null) as Json | null,
   });
 
   if (error) {

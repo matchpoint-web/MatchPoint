@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/lib/database.types";
 import { getCurrentCollegeId } from "@/lib/college-profile-service";
 import {
   isCoachNoteStatus,
@@ -6,15 +7,7 @@ import {
   type CoachNoteStatus,
 } from "@/lib/coach-notes";
 
-type CoachNoteRow = {
-  id: string;
-  college_id: string;
-  player_id: string;
-  status: string;
-  notes: string;
-  created_at: string;
-  updated_at: string;
-};
+type CoachNoteRow = Tables<"coach_notes">;
 
 const NOTE_SELECT =
   "id, college_id, player_id, status, notes, created_at, updated_at";

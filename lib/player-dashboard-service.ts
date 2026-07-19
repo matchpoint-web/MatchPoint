@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Json, Tables } from "@/lib/database.types";
 import { DOCUMENT_DEFINITIONS, toUiDocumentType } from "@/lib/player-documents";
 import {
   calculateProfileCompletion,
@@ -26,15 +27,20 @@ export type PlayerDashboardData = {
   recentActivity: PlayerDashboardActivityItem[];
 };
 
-type NotificationRow = {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  metadata: Record<string, unknown> | null;
-  is_read: boolean;
-  created_at: string;
-};
+type NotificationRow = Pick<
+  Tables<"notifications">,
+  "id" | "type" | "title" | "message" | "metadata" | "is_read" | "created_at"
+>;
+
+function metadataToRecord(
+  metadata: Json | null,
+): Record<string, unknown> | null {
+  if (metadata == null) return null;
+  if (typeof metadata === "object" && !Array.isArray(metadata)) {
+    return metadata as Record<string, unknown>;
+  }
+  return null;
+}
 
 function formatNumber(
   value: number | string | null | undefined,
@@ -84,7 +90,7 @@ function mapNotification(row: NotificationRow): PlayerNotification {
     description: row.message,
     createdAt: row.created_at,
     unread: !row.is_read,
-    metadata: row.metadata,
+    metadata: metadataToRecord(row.metadata),
   };
 }
 
