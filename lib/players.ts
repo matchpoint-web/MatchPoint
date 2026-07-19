@@ -149,8 +149,6 @@ export const filterOptions = {
 
 const listedCountries = filterOptions.countries.filter((c) => c !== "Other");
 const listedGradYears = filterOptions.graduationYears.filter((y) => y !== "Other");
-const listedMajors = filterOptions.majors.filter((m) => m !== "Other");
-const listedAcademicTests = filterOptions.academicTests.filter((t) => t !== "Other");
 
 export function matchesCountryFilter(country: string, filter: string): boolean {
   if (!filter) return true;
@@ -200,42 +198,6 @@ export function matchesGpaRange(gpa: number, range: string): boolean {
     default:
       return true;
   }
-}
-
-export function matchesHeightRange(height: number, range: string): boolean {
-  if (!range) return true;
-  switch (range) {
-    case "under-150":
-      return height < 150;
-    case "150-160":
-      return height >= 150 && height < 160;
-    case "160-170":
-      return height >= 160 && height < 170;
-    case "170-180":
-      return height >= 170 && height < 180;
-    case "180-190":
-      return height >= 180 && height < 190;
-    case "190-200":
-      return height >= 190 && height < 200;
-    case "200+":
-      return height >= 200;
-    default:
-      return true;
-  }
-}
-
-export function matchesMajorFilter(major: string, filter: string): boolean {
-  if (!filter) return true;
-  if (filter === "Other") return !listedMajors.includes(major);
-  return major === filter;
-}
-
-export function matchesAcademicTestFilter(test: string, filter: string): boolean {
-  if (!filter) return true;
-  if (filter === "Other") {
-    return !listedAcademicTests.some((listed) => listed === test);
-  }
-  return test === filter;
 }
 
 export type SortOption = "highest-utr" | "highest-gpa" | "newest";

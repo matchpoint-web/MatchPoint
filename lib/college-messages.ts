@@ -8,13 +8,6 @@ export type RecruitingStatus =
   | "Committed"
   | "Archived";
 
-export type ConversationFilter =
-  | "all"
-  | "unread"
-  | "saved"
-  | "recruiting"
-  | "archived";
-
 export type MessageSender = "coach" | "player" | "system";
 
 export type MessageAttachmentType =
@@ -55,61 +48,6 @@ export type Conversation = {
   messages: ChatMessage[];
 };
 
-export type MessageTemplate = {
-  id: string;
-  label: string;
-  body: string;
-};
-
-export const conversationFilters: {
-  value: ConversationFilter;
-  label: string;
-}[] = [
-  { value: "all", label: "All" },
-  { value: "unread", label: "Unread" },
-  { value: "saved", label: "Saved Players" },
-  { value: "recruiting", label: "Recruiting List" },
-  { value: "archived", label: "Archived" },
-];
-
-export const messageTemplates: MessageTemplate[] = [
-  {
-    id: "introduce",
-    label: "Introduce Program",
-    body: "Hi {{name}}, I'm Coach Michael Rivera from Stanford University. We're impressed by your profile and would love to introduce you to our tennis program and academic opportunities.",
-  },
-  {
-    id: "zoom",
-    label: "Schedule Zoom Call",
-    body: "Hi {{name}}, would you be available for a Zoom call this week to discuss our program, roster plans, and how you might fit into our team?",
-  },
-  {
-    id: "transcript",
-    label: "Request Transcript",
-    body: "Hi {{name}}, could you please upload your most recent academic transcript so we can continue the evaluation process?",
-  },
-  {
-    id: "sat-act",
-    label: "Request SAT/ACT",
-    body: "Hi {{name}}, please share your latest SAT or ACT scores when you have a moment. This helps our admissions and coaching staff review your academic fit.",
-  },
-  {
-    id: "tournament",
-    label: "Ask Tournament Schedule",
-    body: "Hi {{name}}, could you share your upcoming tournament schedule? We'd like to follow your matches and potentially attend in person.",
-  },
-  {
-    id: "campus",
-    label: "Invite Campus Visit",
-    body: "Hi {{name}}, we'd love to invite you for a campus visit. Please let us know a few dates that work and we'll arrange a tour of facilities and meetings with our staff.",
-  },
-  {
-    id: "congratulate",
-    label: "Congratulate Tournament Result",
-    body: "Hi {{name}}, congratulations on your recent tournament result! Your performance stood out and we wanted to personally recognize your hard work.",
-  },
-];
-
 export function formatRelativeTime(timestamp: string): string {
   const now = Date.now();
   const then = new Date(timestamp).getTime();
@@ -132,38 +70,5 @@ export function formatMessageTime(timestamp: string): string {
   return new Date(timestamp).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-  });
-}
-
-export function applyTemplate(
-  template: MessageTemplate,
-  playerName: string,
-): string {
-  return template.body.replace(
-    /\{\{name\}\}/g,
-    playerName.split(" ")[0] ?? playerName,
-  );
-}
-
-export function filterConversations(
-  conversations: Conversation[],
-  filter: ConversationFilter,
-  query: string,
-): Conversation[] {
-  const q = query.trim().toLowerCase();
-
-  return conversations.filter((c) => {
-    if (filter === "unread" && c.unreadCount === 0) return false;
-    if (filter === "saved" && !c.isSaved) return false;
-    if (filter === "recruiting" && !c.isRecruitingList) return false;
-    if (filter === "archived" && !c.isArchived) return false;
-    if (filter !== "archived" && c.isArchived) return false;
-    if (
-      q &&
-      !c.playerName.toLowerCase().includes(q) &&
-      !c.country.toLowerCase().includes(q)
-    )
-      return false;
-    return true;
   });
 }

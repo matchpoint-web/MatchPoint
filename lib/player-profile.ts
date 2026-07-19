@@ -27,14 +27,6 @@ export type Achievement = {
   description: string;
 };
 
-export type FavoriteCollege = {
-  id: string;
-  name: string;
-  location: string;
-  division: string;
-  initials: string;
-};
-
 export type DocumentItem = {
   id: string;
   name: string;

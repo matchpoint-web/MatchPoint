@@ -20,14 +20,3 @@ export function loginPathForRole(role: UserRole): string {
 export function signupPathForRole(role: UserRole): string {
   return role === "college" ? "/auth/college/signup" : "/auth/player/signup";
 }
-
-export function displayNameFromUser(user: User | null | undefined): string {
-  if (!user) return "Account";
-  const metadata = user.user_metadata ?? {};
-  return (
-    metadata.full_name ||
-    metadata.school_name ||
-    user.email?.split("@")[0] ||
-    "Account"
-  );
-}
