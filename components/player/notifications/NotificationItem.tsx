@@ -17,7 +17,10 @@ export function NotificationItem({
   notification,
   onOpen,
 }: NotificationItemProps) {
-  const href = getNotificationHref(notification.type);
+  const href = getNotificationHref(notification.type, {
+    portal: "player",
+    metadata: notification.metadata,
+  });
 
   return (
     <Link
@@ -41,19 +44,24 @@ export function NotificationItem({
 
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-start justify-between gap-3">
-          <p className="font-semibold tracking-tight text-white">
+          <p
+            className={`font-semibold tracking-tight ${
+              notification.unread ? "text-white" : "text-zinc-200"
+            }`}
+          >
             {notification.title}
           </p>
           <div className="flex shrink-0 items-center gap-2">
             <span className="text-xs text-zinc-500" suppressHydrationWarning>
               {formatNotificationTime(notification.createdAt)}
             </span>
-            {notification.unread ? (
-              <span
-                className="h-2 w-2 rounded-full bg-emerald-400"
-                aria-label="Unread"
-              />
-            ) : null}
+            <span
+              className={`h-2 w-2 rounded-full ${
+                notification.unread ? "bg-emerald-400" : "bg-transparent"
+              }`}
+              aria-label={notification.unread ? "Unread" : undefined}
+              aria-hidden={!notification.unread}
+            />
           </div>
         </div>
         <p className="text-sm leading-relaxed text-zinc-500">

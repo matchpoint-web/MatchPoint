@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { NotificationItem } from "./NotificationItem";
-import { type PlayerNotification } from "@/lib/player-notifications";
+import Link from "next/link";
+import {
+  getNotificationHref,
+  type PlayerNotification,
+} from "@/lib/player-notifications";
 import {
   getNotifications,
   markAllAsRead as markAllAsReadService,
@@ -11,7 +13,11 @@ import {
   subscribeToNotifications,
 } from "@/lib/notifications-service";
 
-export function PlayerNotificationsClient() {
+/**
+ * College notifications list — same Supabase service + read/unread behavior
+ * as player notifications, in the existing college page layout.
+ */
+export function CollegeNotificationsClient() {
   const [notifications, setNotifications] = useState<PlayerNotification[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -63,19 +69,6 @@ export function PlayerNotificationsClient() {
     return unsubscribe;
   }, [upsertNotification]);
 
-  async function markAllAsRead() {
-    const previous = notifications;
-    setNotifications((prev) =>
-      prev.map((item) => ({ ...item, unread: false })),
-    );
-
-    try {
-      await markAllAsReadService();
-    } catch {
-      setNotifications(previous);
-    }
-  }
-
   async function markAsRead(id: string) {
     const target = notifications.find((item) => item.id === id);
     if (!target?.unread) return;
@@ -92,6 +85,32 @@ export function PlayerNotificationsClient() {
     } catch {
       setNotifications(previous);
     }
+  }
+
+  async function markAllAsRead() {
+    if (unreadCount === 0) return;
+
+    const previous = notifications;
+    setNotifications((prev) =>
+      prev.map((item) => ({ ...item, unread: false })),
+    );
+
+    try {
+      await markAllAsReadService();
+    } catch {
+      setNotifications(previous);
+    }
+  }
+
+  if (loaded && notifications.length === 0) {
+    return (
+      <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 px-6 py-16 text-center">
+        <p className="font-medium text-white">No notifications yet</p>
+        <p className="mt-2 text-sm text-zinc-500">
+          Follow-up reminders, messages, and recruiting alerts will appear here.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -112,35 +131,45 @@ export function PlayerNotificationsClient() {
         </button>
       </div>
 
-      {loaded && notifications.length === 0 ? (
-        <div className="rounded-3xl border border-white/8 bg-white/[0.03] px-6 py-16 text-center">
-          <h2 className="text-xl font-semibold tracking-tight text-white">
-            No Notifications
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm text-zinc-500">
-            When colleges view or save your profile, or send messages, updates
-            will appear here.
-          </p>
+      <div className="space-y-3">
+        {notifications.map((item) => (
           <Link
-            href="/player/colleges"
-            className="mt-8 inline-flex rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400"
+            key={item.id}
+            href={getNotificationHref(item.type, {
+              portal: "college",
+              metadata: item.metadata,
+            })}
+            onClick={() => {
+              void markAsRead(item.id);
+            }}
+            className={`block rounded-3xl border p-5 transition-all hover:border-emerald-500/20 ${
+              item.unread
+                ? "border-emerald-500/25 bg-emerald-500/5 hover:border-emerald-500/35"
+                : "border-white/[0.08] bg-gradient-to-b from-zinc-900/80 to-zinc-950/80"
+            }`}
           >
-            Browse Colleges
+            <div className="flex items-start gap-3">
+              <span
+                className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                  item.unread ? "bg-emerald-400" : "bg-transparent"
+                }`}
+                aria-label={item.unread ? "Unread" : undefined}
+                aria-hidden={!item.unread}
+              />
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`font-medium ${
+                    item.unread ? "text-white" : "text-zinc-200"
+                  }`}
+                >
+                  {item.title}
+                </p>
+                <p className="mt-1 text-sm text-zinc-500">{item.description}</p>
+              </div>
+            </div>
           </Link>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {notifications.map((notification) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              onOpen={(notificationId) => {
-                void markAsRead(notificationId);
-              }}
-            />
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
