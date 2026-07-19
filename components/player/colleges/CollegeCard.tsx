@@ -4,11 +4,11 @@ import Link from "next/link";
 import {
   formatAcademicRanking,
   formatCostOfAttendance,
-  type MockCollege,
-} from "@/lib/mock-colleges";
+  type College,
+} from "@/lib/colleges";
 
 type CollegeCardProps = {
-  college: MockCollege;
+  college: College;
   saved: boolean;
   onToggleSave: (id: string) => void;
 };
@@ -23,7 +23,7 @@ export function CollegeCard({
     ...(college.conference
       ? [{ label: "Conference", value: college.conference }]
       : []),
-    { label: "State", value: college.state },
+    ...(college.state ? [{ label: "State", value: college.state }] : []),
     ...(college.academicRanking != null
       ? [
           {
@@ -40,11 +40,17 @@ export function CollegeCard({
           },
         ]
       : []),
-    { label: "Roster Size", value: String(college.rosterSize) },
-    {
-      label: "International",
-      value: String(college.internationalPlayers),
-    },
+    ...(college.rosterSize != null
+      ? [{ label: "Roster Size", value: String(college.rosterSize) }]
+      : []),
+    ...(college.internationalPlayers != null
+      ? [
+          {
+            label: "International",
+            value: String(college.internationalPlayers),
+          },
+        ]
+      : []),
     ...(college.costOfAttendance != null
       ? [
           {
@@ -62,17 +68,26 @@ export function CollegeCard({
       <div className="relative flex flex-1 flex-col p-5 sm:p-6">
         <div className="mb-4 flex items-start gap-4">
           <div
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-900 text-xs font-bold tracking-wide text-emerald-400/90"
+            className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-900 text-xs font-bold tracking-wide text-emerald-400/90"
             aria-label={`${college.name} logo`}
           >
-            {college.initials}
+            {college.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={college.logoUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              college.initials
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-lg font-semibold tracking-tight text-white">
               {college.name}
             </h3>
             <p className="text-sm text-zinc-500">
-              {college.city}, {college.state}
+              {[college.city, college.state].filter(Boolean).join(", ") || "—"}
             </p>
           </div>
         </div>

@@ -4,57 +4,56 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CollegeProfileAvatar } from "@/components/college/CollegeProfileAvatar";
 import {
-  formatNoteUpdatedAt,
   getDashboardStats,
-  getRecentCoachNoteRows,
   getRecentSavedPlayers,
+  getRecentViewedPlayers,
+  getRecentlyViewedCount,
   type DashboardStatCard,
-  type RecentCoachNoteRow,
   type RecentSavedPlayerRow,
 } from "@/lib/dashboard";
 import { type Player } from "@/lib/player-service";
 import { useCollegeProfile } from "@/lib/use-college-profile";
-import { type CoachNote } from "@/lib/coach-notes";
 import { type SavedPlayerRecord } from "@/lib/saved-player-service";
 
 type DashboardData = {
   stats: DashboardStatCard[];
   recentSaved: RecentSavedPlayerRow[];
-  recentNotes: RecentCoachNoteRow[];
+  recentViewed: RecentSavedPlayerRow[];
 };
 
 type CollegeDashboardClientProps = {
   players: Player[];
   savedRecords: SavedPlayerRecord[];
-  coachNotes: CoachNote[];
-  recruitingCount: number;
-  followUpCount: number;
+  savedPlayersCount: number;
+  unreadMessages: number;
+  playersCount: number;
 };
 
 function loadDashboardData(
   players: Player[],
   savedRecords: SavedPlayerRecord[],
-  coachNotes: CoachNote[],
-  recruitingCount: number,
-  followUpCount: number,
+  savedPlayersCount: number,
+  unreadMessages: number,
+  playersCount: number,
 ): DashboardData {
   return {
     stats: getDashboardStats({
-      savedPlayersCount: savedRecords.length,
-      recruitingCount,
-      followUpCount,
+      savedPlayersCount,
+      unreadMessages,
+      playersCount,
+      recentlyViewedCount: getRecentlyViewedCount(),
     }),
     recentSaved: getRecentSavedPlayers(players, savedRecords, 5),
-    recentNotes: getRecentCoachNoteRows(players, coachNotes, 5),
+    recentViewed: getRecentViewedPlayers(players, 5),
   };
 }
 
 export function CollegeDashboardClient({
   players,
   savedRecords,
-  coachNotes,
-  recruitingCount,
-  followUpCount,
+  savedPlayersCount,
+  unreadMessages,
+  playersCount,
 }: CollegeDashboardClientProps) {
   const profile = useCollegeProfile();
   const [data, setData] = useState<DashboardData>({
@@ -66,16 +65,16 @@ export function CollegeDashboardClient({
         description: "Players bookmarked for recruiting",
       },
       {
-        title: "Recruiting",
+        title: "Messages",
         value: 0,
-        href: "/college/players",
-        description: "Players marked as Recruiting",
+        href: "/college/messages",
+        description: "0 unread messages",
       },
       {
-        title: "Follow Up",
+        title: "Player Search",
         value: 0,
         href: "/college/players",
-        description: "Players needing follow-up",
+        description: "Browse and discover recruits",
       },
       {
         title: "Recently Viewed",
@@ -85,7 +84,7 @@ export function CollegeDashboardClient({
       },
     ],
     recentSaved: [],
-    recentNotes: [],
+    recentViewed: [],
   });
 
   useEffect(() => {
@@ -93,12 +92,18 @@ export function CollegeDashboardClient({
       loadDashboardData(
         players,
         savedRecords,
-        coachNotes,
-        recruitingCount,
-        followUpCount,
+        savedPlayersCount,
+        unreadMessages,
+        playersCount,
       ),
     );
-  }, [players, savedRecords, coachNotes, recruitingCount, followUpCount]);
+  }, [
+    players,
+    savedRecords,
+    savedPlayersCount,
+    unreadMessages,
+    playersCount,
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -210,45 +215,54 @@ export function CollegeDashboardClient({
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold tracking-tight text-white">
-                Recent Coach Notes
+                Recently Viewed
               </h3>
               <p className="mt-1 text-sm text-zinc-500">
-                Your five most recently edited notes.
+                Player profiles you opened recently.
               </p>
             </div>
             <Link
               href="/college/players"
               className="text-xs font-medium text-emerald-400 hover:text-emerald-300"
             >
-              Browse players
+              Search players
             </Link>
           </div>
 
-          {data.recentNotes.length === 0 ? (
+          {data.recentViewed.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-10 text-center">
               <p className="text-sm text-zinc-500">
-                No coach notes yet. Add notes from a player profile.
+                No recently viewed players yet. Open a profile from Player
+                Search.
               </p>
             </div>
           ) : (
             <ul className="space-y-2">
-              {data.recentNotes.map(({ note, playerName }) => (
-                <li key={note.playerId}>
+              {data.recentViewed.map(({ player }) => (
+                <li key={player.id}>
                   <Link
-                    href={`/college/players/${note.playerId}`}
+                    href={`/college/players/${player.id}`}
                     className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3 transition hover:border-emerald-500/20 hover:bg-white/[0.05]"
                   >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-zinc-900 text-xs font-bold text-emerald-400">
+                      {player.initials}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-white">
-                        {playerName}
+                        {player.name}
                       </p>
                       <p className="truncate text-xs text-zinc-500">
-                        {formatNoteUpdatedAt(note.updatedAt)}
+                        {player.country} {player.countryFlag}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300">
-                      {note.status}
-                    </span>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+                        UTR
+                      </p>
+                      <p className="text-sm font-semibold text-white">
+                        {player.utr.toFixed(1)}
+                      </p>
+                    </div>
                   </Link>
                 </li>
               ))}

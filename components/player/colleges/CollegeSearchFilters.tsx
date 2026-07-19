@@ -3,7 +3,7 @@
 import {
   collegeFilterOptions,
   type CollegeFilters,
-} from "@/lib/mock-colleges";
+} from "@/lib/colleges";
 
 type CollegeSearchFiltersProps = {
   filters: CollegeFilters;

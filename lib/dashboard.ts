@@ -1,5 +1,4 @@
 import { type Player } from "@/lib/player-service";
-import { type CoachNote } from "@/lib/coach-notes";
 import { type SavedPlayerRecord } from "@/lib/saved-player-service";
 
 const RECENTLY_VIEWED_KEY = "matchpoint-recently-viewed";
@@ -19,11 +18,6 @@ export type DashboardStatCard = {
 
 export type RecentSavedPlayerRow = {
   player: Player;
-};
-
-export type RecentCoachNoteRow = {
-  note: CoachNote;
-  playerName: string;
 };
 
 function isRecentlyViewedEntry(value: unknown): value is RecentlyViewedEntry {
@@ -70,17 +64,11 @@ export function getRecentlyViewedPlayerIds(limit = 5): string[] {
     .map((entry) => entry.playerId);
 }
 
-function findPlayer(
-  players: Player[],
-  playerId: string,
-): Player | undefined {
-  return players.find((player) => player.id === playerId);
-}
-
 export function getDashboardStats(input: {
   savedPlayersCount: number;
-  recruitingCount: number;
-  followUpCount: number;
+  unreadMessages: number;
+  playersCount: number;
+  recentlyViewedCount: number;
 }): DashboardStatCard[] {
   return [
     {
@@ -90,20 +78,23 @@ export function getDashboardStats(input: {
       description: "Players bookmarked for recruiting",
     },
     {
-      title: "Recruiting",
-      value: input.recruitingCount,
-      href: "/college/players",
-      description: "Players marked as Recruiting",
+      title: "Messages",
+      value: input.unreadMessages,
+      href: "/college/messages",
+      description:
+        input.unreadMessages === 1
+          ? "1 unread message"
+          : `${input.unreadMessages} unread messages`,
     },
     {
-      title: "Follow Up",
-      value: input.followUpCount,
+      title: "Player Search",
+      value: input.playersCount,
       href: "/college/players",
-      description: "Players needing follow-up",
+      description: "Browse and discover recruits",
     },
     {
       title: "Recently Viewed",
-      value: getRecentlyViewedCount(),
+      value: input.recentlyViewedCount,
       href: "/college/players",
       description: "Player profiles you opened",
     },
@@ -124,28 +115,15 @@ export function getRecentSavedPlayers(
     .map((player) => ({ player }));
 }
 
-export function getRecentCoachNoteRows(
+export function getRecentViewedPlayers(
   players: Player[],
-  coachNotes: CoachNote[],
   limit = 5,
-): RecentCoachNoteRow[] {
-  return coachNotes.slice(0, limit).map((note) => ({
-    note,
-    playerName: findPlayer(players, note.playerId)?.name ?? "Unknown Player",
-  }));
-}
+): RecentSavedPlayerRow[] {
+  const ids = getRecentlyViewedPlayerIds(limit);
+  const byId = new Map(players.map((player) => [player.id, player]));
 
-export function formatNoteUpdatedAt(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime()) || date.getTime() === 0) {
-    return "Not set";
-  }
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return ids
+    .map((id) => byId.get(id))
+    .filter((player): player is Player => Boolean(player))
+    .map((player) => ({ player }));
 }

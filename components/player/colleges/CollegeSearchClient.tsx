@@ -7,12 +7,16 @@ import {
   COLLEGES_PER_PAGE,
   collegeSortOptions,
   defaultCollegeFilters,
-  matchesCollegeUtrRange,
-  mockColleges,
+  filterColleges,
+  sortColleges,
+  type College,
   type CollegeFilters,
   type CollegeSortOption,
-  type MockCollege,
-} from "@/lib/mock-colleges";
+} from "@/lib/colleges";
+
+type CollegeSearchClientProps = {
+  initialColleges: College[];
+};
 
 function countActiveFilters(filters: CollegeFilters): number {
   let count = 0;
@@ -21,56 +25,10 @@ function countActiveFilters(filters: CollegeFilters): number {
   return count;
 }
 
-function filterColleges(
-  colleges: MockCollege[],
-  query: string,
-  filters: CollegeFilters,
-) {
-  const q = query.trim().toLowerCase();
-
-  return colleges.filter((college) => {
-    if (
-      q &&
-      !college.name.toLowerCase().includes(q) &&
-      !college.state.toLowerCase().includes(q) &&
-      !college.city.toLowerCase().includes(q) &&
-      !(college.conference?.toLowerCase().includes(q) ?? false)
-    ) {
-      return false;
-    }
-    if (filters.division && college.division !== filters.division) {
-      return false;
-    }
-    if (!matchesCollegeUtrRange(college.averageTeamUtr, filters.utrRange)) {
-      return false;
-    }
-    return true;
-  });
-}
-
-function sortColleges(colleges: MockCollege[], sort: CollegeSortOption) {
-  const sorted = [...colleges];
-  switch (sort) {
-    case "utr-asc":
-      return sorted.sort(
-        (a, b) => (a.averageTeamUtr ?? 0) - (b.averageTeamUtr ?? 0),
-      );
-    case "utr-desc":
-      return sorted.sort(
-        (a, b) => (b.averageTeamUtr ?? 0) - (a.averageTeamUtr ?? 0),
-      );
-    case "division":
-      return sorted.sort(
-        (a, b) =>
-          a.division.localeCompare(b.division) || a.name.localeCompare(b.name),
-      );
-    case "name-asc":
-    default:
-      return sorted.sort((a, b) => a.name.localeCompare(b.name));
-  }
-}
-
-export function CollegeSearchClient() {
+export function CollegeSearchClient({
+  initialColleges,
+}: CollegeSearchClientProps) {
+  const [colleges] = useState(initialColleges);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<CollegeFilters>(defaultCollegeFilters);
   const [sort, setSort] = useState<CollegeSortOption>("name-asc");
@@ -78,8 +36,8 @@ export function CollegeSearchClient() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(
-    () => sortColleges(filterColleges(mockColleges, query, filters), sort),
-    [query, filters, sort],
+    () => sortColleges(filterColleges(colleges, query, filters), sort),
+    [colleges, query, filters, sort],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / COLLEGES_PER_PAGE));
