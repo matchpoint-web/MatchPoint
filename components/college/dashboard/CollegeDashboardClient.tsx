@@ -6,8 +6,7 @@ import { CollegeProfileAvatar } from "@/components/college/CollegeProfileAvatar"
 import {
   getDashboardStats,
   getRecentSavedPlayers,
-  getRecentViewedPlayers,
-  getRecentlyViewedCount,
+  toRecentPlayerRows,
   type DashboardStatCard,
   type RecentSavedPlayerRow,
 } from "@/lib/dashboard";
@@ -27,6 +26,8 @@ type CollegeDashboardClientProps = {
   savedPlayersCount: number;
   unreadMessages: number;
   playersCount: number;
+  recentlyViewedCount: number;
+  recentViewedPlayers: Player[];
 };
 
 function loadDashboardData(
@@ -35,16 +36,19 @@ function loadDashboardData(
   savedPlayersCount: number,
   unreadMessages: number,
   playersCount: number,
+  recentlyViewedCount: number,
+  recentViewedPlayers: Player[],
 ): DashboardData {
   return {
     stats: getDashboardStats({
       savedPlayersCount,
       unreadMessages,
       playersCount,
-      recentlyViewedCount: getRecentlyViewedCount(),
+      recentlyViewedCount,
     }),
     recentSaved: getRecentSavedPlayers(players, savedRecords, 5),
-    recentViewed: getRecentViewedPlayers(players, 5),
+    // Keep list length aligned with previous UI (5); data loaded up to 10 server-side.
+    recentViewed: toRecentPlayerRows(recentViewedPlayers.slice(0, 5)),
   };
 }
 
@@ -54,6 +58,8 @@ export function CollegeDashboardClient({
   savedPlayersCount,
   unreadMessages,
   playersCount,
+  recentlyViewedCount,
+  recentViewedPlayers,
 }: CollegeDashboardClientProps) {
   const profile = useCollegeProfile();
   const [data, setData] = useState<DashboardData>({
@@ -95,6 +101,8 @@ export function CollegeDashboardClient({
         savedPlayersCount,
         unreadMessages,
         playersCount,
+        recentlyViewedCount,
+        recentViewedPlayers,
       ),
     );
   }, [
@@ -103,6 +111,8 @@ export function CollegeDashboardClient({
     savedPlayersCount,
     unreadMessages,
     playersCount,
+    recentlyViewedCount,
+    recentViewedPlayers,
   ]);
 
   return (

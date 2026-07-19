@@ -32,6 +32,8 @@ export default async function CollegeDashboard() {
         savedPlayersCount={data.savedPlayersCount}
         unreadMessages={data.unreadMessages}
         playersCount={data.playersCount}
+        recentlyViewedCount={data.recentlyViewedCount}
+        recentViewedPlayers={data.recentViewedPlayers}
       />
     </div>
   );

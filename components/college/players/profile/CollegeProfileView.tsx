@@ -7,8 +7,8 @@ import { GlassCard } from "@/components/player/GlassCard";
 import { SectionTitle } from "@/components/player/SectionTitle";
 import { CoachNotes } from "@/components/college/players/profile/CoachNotes";
 import { type CollegePlayerProfile } from "@/lib/college-player-profile";
-import { trackPlayerView } from "@/lib/dashboard";
 import { type CoachNote } from "@/lib/coach-notes";
+import { addRecentlyViewedAction } from "@/lib/recently-viewed/actions";
 import { toggleSavedPlayerAction } from "@/lib/saved-players/actions";
 import { getOrCreateConversation } from "@/lib/messages-service";
 
@@ -32,7 +32,9 @@ export function CollegeProfileView({
 
   useEffect(() => {
     setSaved(initiallySaved);
-    trackPlayerView(profile.id);
+    void addRecentlyViewedAction(profile.id).catch(() => {
+      // Non-blocking: viewing history must not break profile UI.
+    });
   }, [profile.id, initiallySaved]);
 
   function handleToggleSave() {
