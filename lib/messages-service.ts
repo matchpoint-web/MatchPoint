@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/client";
 import type { PreferredDivision } from "@/lib/players";
-import type { RecruitingStatus } from "@/lib/coach-crm";
 import type {
   ChatMessage,
   Conversation,
   MessageSender,
+  RecruitingStatus,
 } from "@/lib/college-messages";
 import { notifyNewMessage } from "@/lib/notifications-service";
 

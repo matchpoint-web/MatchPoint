@@ -1,9 +1,12 @@
 import type { PreferredDivision } from "./players";
-import type { RecruitingStatus } from "./coach-crm";
-import {
-  appendCommunicationEvent,
-  type CommunicationEventType,
-} from "./communication-history";
+
+/** Display status on conversation list cards (mapped from coach notes). */
+export type RecruitingStatus =
+  | "Interested"
+  | "Contacted"
+  | "Offer Sent"
+  | "Committed"
+  | "Archived";
 
 export type ConversationFilter =
   | "all"
@@ -56,8 +59,6 @@ export type MessageTemplate = {
   id: string;
   label: string;
   body: string;
-  historyType?: CommunicationEventType;
-  historyTitle?: string;
 };
 
 export const conversationFilters: {
@@ -76,50 +77,36 @@ export const messageTemplates: MessageTemplate[] = [
     id: "introduce",
     label: "Introduce Program",
     body: "Hi {{name}}, I'm Coach Michael Rivera from Stanford University. We're impressed by your profile and would love to introduce you to our tennis program and academic opportunities.",
-    historyType: "message_sent",
-    historyTitle: "Program introduction sent",
   },
   {
     id: "zoom",
     label: "Schedule Zoom Call",
     body: "Hi {{name}}, would you be available for a Zoom call this week to discuss our program, roster plans, and how you might fit into our team?",
-    historyType: "message_sent",
-    historyTitle: "Zoom call invitation sent",
   },
   {
     id: "transcript",
     label: "Request Transcript",
     body: "Hi {{name}}, could you please upload your most recent academic transcript so we can continue the evaluation process?",
-    historyType: "transcript_requested",
-    historyTitle: "Transcript requested",
   },
   {
     id: "sat-act",
     label: "Request SAT/ACT",
     body: "Hi {{name}}, please share your latest SAT or ACT scores when you have a moment. This helps our admissions and coaching staff review your academic fit.",
-    historyType: "message_sent",
-    historyTitle: "SAT/ACT request sent",
   },
   {
     id: "tournament",
     label: "Ask Tournament Schedule",
     body: "Hi {{name}}, could you share your upcoming tournament schedule? We'd like to follow your matches and potentially attend in person.",
-    historyType: "message_sent",
-    historyTitle: "Tournament schedule requested",
   },
   {
     id: "campus",
     label: "Invite Campus Visit",
     body: "Hi {{name}}, we'd love to invite you for a campus visit. Please let us know a few dates that work and we'll arrange a tour of facilities and meetings with our staff.",
-    historyType: "campus_visit_invited",
-    historyTitle: "Campus visit invited",
   },
   {
     id: "congratulate",
     label: "Congratulate Tournament Result",
     body: "Hi {{name}}, congratulations on your recent tournament result! Your performance stood out and we wanted to personally recognize your hard work.",
-    historyType: "message_sent",
-    historyTitle: "Congratulatory message sent",
   },
 ];
 
@@ -156,15 +143,6 @@ export function applyTemplate(
     /\{\{name\}\}/g,
     playerName.split(" ")[0] ?? playerName,
   );
-}
-
-export function logMessagingHistory(
-  playerId: string,
-  type: CommunicationEventType,
-  title: string,
-  description: string,
-) {
-  appendCommunicationEvent(playerId, { type, title, description });
 }
 
 export function filterConversations(
