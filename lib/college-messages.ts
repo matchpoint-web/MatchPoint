@@ -1,4 +1,4 @@
-import type { PreferredDivision } from "./mock-players";
+import type { PreferredDivision } from "./players";
 import type { RecruitingStatus } from "./coach-crm";
 import {
   appendCommunicationEvent,

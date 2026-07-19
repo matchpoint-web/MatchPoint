@@ -13,7 +13,7 @@ import {
   sortOptions,
   type PlayerFilters,
   type SortOption,
-} from "@/lib/mock-players";
+} from "@/lib/players";
 import { type Player } from "@/lib/player-service";
 import { toggleSavedPlayerAction } from "@/lib/saved-players/actions";
 

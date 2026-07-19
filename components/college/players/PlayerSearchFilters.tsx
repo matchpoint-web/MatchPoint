@@ -3,7 +3,7 @@
 import {
   filterOptions,
   type PlayerFilters,
-} from "@/lib/mock-players";
+} from "@/lib/players";
 
 type PlayerSearchFiltersProps = {
   filters: PlayerFilters;

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { PreferredDivision } from "@/lib/mock-players";
+import type { PreferredDivision } from "@/lib/players";
 import type { RecruitingStatus } from "@/lib/coach-crm";
 import type {
   ChatMessage,

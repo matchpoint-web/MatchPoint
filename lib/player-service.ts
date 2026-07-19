@@ -1,13 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import {
   type AcademicTest,
-  type MockPlayer,
+  type Player,
   type PreferredDivision,
-} from "@/lib/mock-players";
+} from "@/lib/players";
 import { defaultProfileStrength } from "@/lib/profile-strength";
 
-/** UI player shape for search cards and lists. Source-agnostic. */
-export type Player = MockPlayer;
+export type { Player };
 
 export type PlayerDetail = Player & {
   age: number;
