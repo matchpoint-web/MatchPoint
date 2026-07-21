@@ -1,15 +1,25 @@
+import { getUserRole } from "@/lib/auth/utils";
 import {
   type Achievement,
   type DocumentItem,
   type HighlightVideo,
   type PlayerProfile,
 } from "@/lib/player-profile";
-import { getCurrentPlayerProfile } from "@/lib/players/queries";
-import type { PlayerProfileRow } from "@/lib/players/types";
+import {
+  ensureCurrentPlayerId,
+  getCurrentPlayerProfile,
+  PLAYER_PROFILE_SELECT,
+} from "@/lib/players/queries";
+import type {
+  PlayerProfileRow,
+  SavePlayerProfileInput,
+  SavePlayerProfileState,
+} from "@/lib/players/types";
 import {
   type ProfileStrength,
   type ProfileStrengthItem,
 } from "@/lib/profile-strength";
+import { createClient } from "@/lib/supabase/server";
 
 export type InfoGridItem = { label: string; value: string };
 
@@ -395,4 +405,122 @@ export async function getPlayerDashboardProfile(): Promise<PlayerDashboardProfil
 /** Edit page: raw row + fallback name from auth metadata. */
 export async function getPlayerProfileForEdit() {
   return getCurrentPlayerProfile();
+}
+
+async function uploadProfileImage(
+  userId: string,
+  file: File,
+): Promise<string> {
+  const supabase = await createClient();
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${Date.now()}.${extension}`;
+
+  const { error } = await supabase.storage
+    .from("player-avatars")
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type || "image/jpeg",
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("player-avatars").getPublicUrl(path);
+
+  return publicUrl;
+}
+
+/**
+ * Persist editable player profile fields to `players`.
+ * Creates a row if missing, then updates the owned row.
+ */
+export async function saveCurrentPlayerProfile(
+  input: SavePlayerProfileInput,
+): Promise<SavePlayerProfileState> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user || getUserRole(user) !== "player") {
+      return {
+        error: "You must be logged in as a player to save your profile.",
+        success: null,
+      };
+    }
+
+    const fullName = input.fullName.trim();
+    if (!fullName) {
+      return { error: "Full name is required.", success: null };
+    }
+
+    let profileImageUrl = input.existingProfileImageUrl;
+
+    if (input.profileImageFile && input.profileImageFile.size > 0) {
+      if (!input.profileImageFile.type.startsWith("image/")) {
+        return {
+          error: "Profile image must be an image file.",
+          success: null,
+        };
+      }
+      if (input.profileImageFile.size > 5 * 1024 * 1024) {
+        return {
+          error: "Profile image must be 5MB or smaller.",
+          success: null,
+        };
+      }
+      profileImageUrl = await uploadProfileImage(user.id, input.profileImageFile);
+    }
+
+    const playerId = await ensureCurrentPlayerId();
+
+    const payload = {
+      full_name: fullName,
+      nationality: input.nationality.trim() || null,
+      graduation_year: input.graduationYear,
+      utr: input.utr,
+      gpa: input.gpa,
+      height: input.height,
+      weight: input.weight,
+      dominant_hand: input.dominantHand || null,
+      backhand: input.backhand || null,
+      date_of_birth: input.dateOfBirth.trim() || null,
+      bio: input.bio.trim() || null,
+      profile_image_url: profileImageUrl,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("players")
+      .update(payload)
+      .eq("id", playerId)
+      .eq("user_id", user.id)
+      .select(PLAYER_PROFILE_SELECT)
+      .single();
+
+    if (error) {
+      return { error: error.message, success: null };
+    }
+
+    await supabase.auth.updateUser({
+      data: { full_name: fullName },
+    });
+
+    const row = data as PlayerProfileRow | null;
+
+    return {
+      error: null,
+      success: "Profile saved successfully.",
+      profileImageUrl: row?.profile_image_url ?? profileImageUrl,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to save profile.";
+    return { error: message, success: null };
+  }
 }

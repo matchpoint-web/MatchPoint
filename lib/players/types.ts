@@ -10,6 +10,23 @@ export type SavePlayerProfileState = {
   profileImageUrl?: string | null;
 };
 
+/** Validated payload for persisting editable player profile fields. */
+export type SavePlayerProfileInput = {
+  fullName: string;
+  nationality: string;
+  graduationYear: number | null;
+  utr: number | null;
+  gpa: number | null;
+  height: number | null;
+  weight: number | null;
+  dominantHand: DominantHand | "";
+  backhand: BackhandType | "";
+  dateOfBirth: string;
+  bio: string;
+  existingProfileImageUrl: string | null;
+  profileImageFile: File | null;
+};
+
 /** Domain/profile edit shape (coerced empties). Not a raw DB row — see Tables<"players">. */
 export type PlayerProfileRow = {
   id: string | null;
