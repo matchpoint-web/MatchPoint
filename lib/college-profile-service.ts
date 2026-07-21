@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/database.types";
+import { getUserRole } from "@/lib/auth/utils";
 import {
   getEmptyCollegeProfile,
   isNcaaDivision,
@@ -74,7 +75,7 @@ export async function getCurrentCollegeId(): Promise<string | null> {
   } = await supabase.auth.getUser();
 
   if (!user) return null;
-  if (user.user_metadata?.role !== "college") return null;
+  if (getUserRole(user) !== "college") return null;
 
   const { data: existing, error: selectError } = await supabase
     .from("colleges")
@@ -209,7 +210,7 @@ export async function saveCurrentCollegeProfile(
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || user.user_metadata?.role !== "college") {
+    if (!user || getUserRole(user) !== "college") {
       return {
         error: "You must be logged in as a college to save settings.",
         success: null,

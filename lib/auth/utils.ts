@@ -1,8 +1,12 @@
 import type { User } from "@supabase/supabase-js";
 import type { UserRole } from "@/lib/auth/types";
 
+/**
+ * Portal role from immutable JWT app_metadata.
+ * Never read user_metadata.role (clients can change that).
+ */
 export function getUserRole(user: User | null | undefined): UserRole | null {
-  const role = user?.user_metadata?.role;
+  const role = user?.app_metadata?.role;
   if (role === "player" || role === "college") {
     return role;
   }

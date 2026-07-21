@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/database.types";
+import { getUserRole } from "@/lib/auth/utils";
 import type { PreferredDivision } from "@/lib/players";
 import type {
   ChatMessage,
@@ -157,10 +158,7 @@ async function requireAuthContext(): Promise<AuthContext> {
     throw new Error("Not authenticated");
   }
 
-  const role =
-    typeof user.user_metadata?.role === "string"
-      ? user.user_metadata.role
-      : null;
+  const role = getUserRole(user);
 
   if (role === "college") {
     const { data: college, error: collegeError } = await supabase

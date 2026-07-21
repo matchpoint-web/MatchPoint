@@ -452,6 +452,32 @@ export type Database = {
         };
         Returns: Database["public"]["Tables"]["notifications"]["Row"];
       };
+      jwt_app_role: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      is_player_account: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_college_account: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      player_participates_in_college_conversation: {
+        Args: {
+          target_college_id: string;
+        };
+        Returns: boolean;
+      };
+      ensure_player_profile: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      ensure_college_profile: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
     };
     Enums: {
       [_ in never]: never;
