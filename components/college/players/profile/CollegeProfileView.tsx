@@ -10,7 +10,7 @@ import { type CollegePlayerProfile } from "@/lib/college-player-profile";
 import { type CoachNote } from "@/lib/coach-notes";
 import { addRecentlyViewedAction } from "@/lib/recently-viewed/actions";
 import { toggleSavedPlayerAction } from "@/lib/saved-players/actions";
-import { getOrCreateConversation } from "@/lib/messages-service";
+import { getOrCreateConversationAction } from "@/lib/messages/actions";
 
 type CollegeProfileViewProps = {
   profile: CollegePlayerProfile;
@@ -58,7 +58,7 @@ export function CollegeProfileView({
 
     setIsMessaging(true);
     try {
-      const conversationId = await getOrCreateConversation(profile.id);
+      const conversationId = await getOrCreateConversationAction(profile.id);
       router.push(`/college/messages?c=${encodeURIComponent(conversationId)}`);
     } catch {
       setIsMessaging(false);

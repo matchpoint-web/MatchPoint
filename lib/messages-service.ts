@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
-import type { Tables } from "@/lib/database.types";
+import type { Json } from "@/lib/database.types";
 import { getUserRole } from "@/lib/auth/utils";
 import type { PreferredDivision } from "@/lib/players";
 import type {
@@ -8,34 +7,57 @@ import type {
   MessageSender,
   RecruitingStatus,
 } from "@/lib/college-messages";
-import { notifyNewMessage } from "@/lib/notifications-service";
+import { NOTIFICATION_TYPES } from "@/lib/player-notifications";
+import { createClient } from "@/lib/supabase/server";
+import {
+  CONVERSATIONS_PER_PAGE,
+  insertConversation,
+  insertMessage,
+  MESSAGES_PER_PAGE,
+  queryCoachNoteStatuses,
+  queryConversationById,
+  queryConversationIdBetween,
+  queryConversationsPage,
+  queryLatestMessagesForConversations,
+  queryMessagesPage,
+  queryCollegeIdForUser,
+  queryPlayerIdForUser,
+  querySavedPlayerIds,
+  type ConversationRow,
+  type MessageRow,
+  type MessagingAuthScope,
+} from "@/lib/messages/queries";
 
-type SenderRole = "player" | "college";
-
-type MessageRow = Tables<"messages">;
-
-type PlayerEmbed = Pick<
-  Tables<"players">,
-  "id" | "full_name" | "nationality" | "graduation_year" | "utr" | "gpa"
->;
-
-type CollegeEmbed = Pick<
-  Tables<"colleges">,
-  "id" | "school_name" | "location" | "division"
->;
-
-/** Conversation list row including joined player/college embeds. */
-type ConversationRow = Pick<
-  Tables<"conversations">,
-  "id" | "player_id" | "college_id" | "created_at"
-> & {
-  players: PlayerEmbed | PlayerEmbed[] | null;
-  colleges: CollegeEmbed | CollegeEmbed[] | null;
-};
-
-type AuthContext =
+export type MessagesAuthContext =
   | { role: "college"; userId: string; collegeId: string; playerId: null }
   | { role: "player"; userId: string; collegeId: null; playerId: string };
+
+export type ConversationsPageResult = {
+  conversations: Conversation[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type MessagesPageResult = {
+  messages: ChatMessage[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type ListConversationsParams = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type ListMessagesParams = {
+  conversationId: string;
+  page?: number;
+  pageSize?: number;
+};
 
 const COUNTRY_FLAGS: Record<string, string> = {
   "United States": "🇺🇸",
@@ -101,15 +123,29 @@ function flagForCountry(country: string): string {
 }
 
 function unwrapPlayer(
-  players: PlayerEmbed | PlayerEmbed[] | null,
-): PlayerEmbed | null {
+  players: ConversationRow["players"],
+): {
+  id: string;
+  full_name: string;
+  nationality: string | null;
+  graduation_year: number | null;
+  utr: number | null;
+  gpa: number | null;
+  user_id: string | null;
+} | null {
   if (!players) return null;
   return Array.isArray(players) ? (players[0] ?? null) : players;
 }
 
 function unwrapCollege(
-  colleges: CollegeEmbed | CollegeEmbed[] | null,
-): CollegeEmbed | null {
+  colleges: ConversationRow["colleges"],
+): {
+  id: string;
+  school_name: string;
+  location: string | null;
+  division: string | null;
+  user_id: string | null;
+} | null {
   if (!colleges) return null;
   return Array.isArray(colleges) ? (colleges[0] ?? null) : colleges;
 }
@@ -120,7 +156,7 @@ function mapSenderRole(role: string): MessageSender {
   return "system";
 }
 
-function mapMessageRow(row: MessageRow): ChatMessage {
+export function mapMessageRow(row: MessageRow): ChatMessage {
   return {
     id: row.id,
     conversationId: row.conversation_id,
@@ -147,8 +183,8 @@ function mapCoachStatusToRecruiting(status: string | undefined): RecruitingStatu
   }
 }
 
-async function requireAuthContext(): Promise<AuthContext> {
-  const supabase = createClient();
+async function requireAuthContext(): Promise<MessagesAuthContext> {
+  const supabase = await createClient();
   const {
     data: { user },
     error,
@@ -161,52 +197,39 @@ async function requireAuthContext(): Promise<AuthContext> {
   const role = getUserRole(user);
 
   if (role === "college") {
-    const { data: college, error: collegeError } = await supabase
-      .from("colleges")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (collegeError) {
-      throw new Error(collegeError.message);
-    }
-
-    if (!college?.id) {
+    const collegeId = await queryCollegeIdForUser(user.id);
+    if (!collegeId) {
       throw new Error("College profile not found.");
     }
-
     return {
       role: "college",
       userId: user.id,
-      collegeId: college.id as string,
+      collegeId,
       playerId: null,
     };
   }
 
   if (role === "player") {
-    const { data: player, error: playerError } = await supabase
-      .from("players")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (playerError) {
-      throw new Error(playerError.message);
-    }
-
-    if (!player?.id) {
+    const playerId = await queryPlayerIdForUser(user.id);
+    if (!playerId) {
       throw new Error("Player profile not found.");
     }
-
     return {
       role: "player",
       userId: user.id,
       collegeId: null,
-      playerId: player.id as string,
+      playerId,
     };
   }
 
   throw new Error("Unsupported account role for messaging.");
+}
+
+function toScope(ctx: MessagesAuthContext): MessagingAuthScope {
+  if (ctx.role === "college") {
+    return { role: "college", collegeId: ctx.collegeId, playerId: null };
+  }
+  return { role: "player", collegeId: null, playerId: ctx.playerId };
 }
 
 function buildConversationShell(
@@ -217,10 +240,10 @@ function buildConversationShell(
     isSaved: boolean;
     recruitingStatus: RecruitingStatus;
     isRecruitingList: boolean;
+    lastMessage: string;
+    lastMessageAt: string;
   },
 ): Conversation {
-  const last = messages[messages.length - 1];
-
   if (extras.viewerRole === "player") {
     const college = unwrapCollege(row.colleges);
     const name = college?.school_name?.trim() || "College Coach";
@@ -239,8 +262,8 @@ function buildConversationShell(
       division: "NCAA D1" as PreferredDivision,
       englishTest: "",
       recruitingStatus: extras.recruitingStatus,
-      lastMessage: last?.body ?? "",
-      lastMessageAt: last?.timestamp ?? row.created_at,
+      lastMessage: extras.lastMessage,
+      lastMessageAt: extras.lastMessageAt,
       unreadCount: 0,
       isSaved: extras.isSaved,
       isRecruitingList: extras.isRecruitingList,
@@ -267,8 +290,8 @@ function buildConversationShell(
     division: "NCAA D1" as PreferredDivision,
     englishTest: "",
     recruitingStatus: extras.recruitingStatus,
-    lastMessage: last?.body ?? "",
-    lastMessageAt: last?.timestamp ?? row.created_at,
+    lastMessage: extras.lastMessage,
+    lastMessageAt: extras.lastMessageAt,
     unreadCount: 0,
     isSaved: extras.isSaved,
     isRecruitingList: extras.isRecruitingList,
@@ -277,112 +300,88 @@ function buildConversationShell(
   };
 }
 
+function pickLatestAndHasCollegeMessage(rows: MessageRow[]): {
+  latest: MessageRow | null;
+  hasCollegeMessage: boolean;
+} {
+  let latest: MessageRow | null = null;
+  let hasCollegeMessage = false;
+
+  for (const row of rows) {
+    if (!latest) latest = row;
+    if (row.sender_role === "college") {
+      hasCollegeMessage = true;
+    }
+  }
+
+  return { latest, hasCollegeMessage };
+}
+
 /**
- * Conversations for the current college or player account.
- * College view is enriched with player profile fields for the existing inbox UI.
+ * Paginated inbox conversations for the current user.
+ * List rows include latest-message preview; full threads load via listMessages.
  */
-export async function getConversations(): Promise<Conversation[]> {
+export async function listConversations(
+  params: ListConversationsParams = {},
+): Promise<ConversationsPageResult> {
   const ctx = await requireAuthContext();
-  const supabase = createClient();
+  const pageSize = params.pageSize ?? CONVERSATIONS_PER_PAGE;
+  const page = params.page ?? 1;
 
-  let query = supabase.from("conversations").select(
-    `
-      id,
-      player_id,
-      college_id,
-      created_at,
-      players (
-        id,
-        full_name,
-        nationality,
-        graduation_year,
-        utr,
-        gpa
-      ),
-      colleges (
-        id,
-        school_name,
-        location,
-        division
-      )
-    `,
-  );
+  const { rows, totalCount, page: resolvedPage, pageSize: resolvedSize } =
+    await queryConversationsPage({
+      scope: toScope(ctx),
+      page,
+      pageSize,
+    });
 
-  if (ctx.role === "college") {
-    query = query.eq("college_id", ctx.collegeId);
-  } else {
-    query = query.eq("player_id", ctx.playerId);
+  if (rows.length === 0) {
+    return {
+      conversations: [],
+      totalCount,
+      page: resolvedPage,
+      pageSize: resolvedSize,
+      totalPages: Math.max(1, Math.ceil(totalCount / resolvedSize)),
+    };
   }
-
-  const { data, error } = await query.order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const rows = (data as ConversationRow[] | null) ?? [];
-  if (rows.length === 0) return [];
 
   const conversationIds = rows.map((row) => row.id);
   const playerIds = [...new Set(rows.map((row) => row.player_id))];
 
-  const { data: messageData, error: messageError } = await supabase
-    .from("messages")
-    .select(
-      "id, conversation_id, sender_user_id, sender_role, message, created_at",
-    )
-    .in("conversation_id", conversationIds)
-    .order("created_at", { ascending: true });
-
-  if (messageError) {
-    throw new Error(messageError.message);
-  }
-
-  const messagesByConversation = new Map<string, ChatMessage[]>();
-  for (const row of (messageData as MessageRow[] | null) ?? []) {
+  const latestRows = await queryLatestMessagesForConversations(conversationIds);
+  const messagesByConversation = new Map<string, MessageRow[]>();
+  for (const row of latestRows) {
     const list = messagesByConversation.get(row.conversation_id) ?? [];
-    list.push(mapMessageRow(row));
+    list.push(row);
     messagesByConversation.set(row.conversation_id, list);
   }
 
-  const savedIds = new Set<string>();
-  const noteStatusByPlayer = new Map<string, string>();
+  let savedIds = new Set<string>();
+  let noteStatusByPlayer = new Map<string, string>();
 
   if (ctx.role === "college") {
-    const [{ data: saved }, { data: notes }] = await Promise.all([
-      supabase
-        .from("saved_players")
-        .select("player_id")
-        .eq("college_id", ctx.collegeId)
-        .in("player_id", playerIds),
-      supabase
-        .from("coach_notes")
-        .select("player_id, status")
-        .eq("college_id", ctx.collegeId)
-        .in("player_id", playerIds),
+    const [saved, notes] = await Promise.all([
+      querySavedPlayerIds(ctx.collegeId, playerIds),
+      queryCoachNoteStatuses(ctx.collegeId, playerIds),
     ]);
-
-    for (const row of saved ?? []) {
-      if (row?.player_id) savedIds.add(row.player_id as string);
-    }
-    for (const row of notes ?? []) {
-      if (row?.player_id) {
-        noteStatusByPlayer.set(row.player_id as string, row.status as string);
-      }
-    }
+    savedIds = new Set(saved);
+    noteStatusByPlayer = notes;
   }
 
   const conversations = rows
     .map((row) => {
-      const messages = messagesByConversation.get(row.id) ?? [];
+      const threadRows = messagesByConversation.get(row.id) ?? [];
+      const { latest, hasCollegeMessage } =
+        pickLatestAndHasCollegeMessage(threadRows);
+
       // Players only see threads after a coach has sent at least one message.
-      if (ctx.role === "player" && messages.length === 0) {
+      if (ctx.role === "player" && !hasCollegeMessage) {
         return null;
       }
 
       const status = noteStatusByPlayer.get(row.player_id);
       const recruitingStatus = mapCoachStatusToRecruiting(status);
-      return buildConversationShell(row, messages, {
+      return buildConversationShell(row, [], {
         viewerRole: ctx.role,
         isSaved: savedIds.has(row.player_id),
         recruitingStatus,
@@ -390,6 +389,8 @@ export async function getConversations(): Promise<Conversation[]> {
           recruitingStatus === "Interested" ||
           recruitingStatus === "Contacted" ||
           recruitingStatus === "Offer Sent",
+        lastMessage: latest?.message ?? "",
+        lastMessageAt: latest?.created_at ?? row.updated_at ?? row.created_at,
       });
     })
     .filter((conversation): conversation is Conversation => conversation != null);
@@ -399,33 +400,58 @@ export async function getConversations(): Promise<Conversation[]> {
       new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
   );
 
-  return conversations;
+  return {
+    conversations,
+    totalCount,
+    page: resolvedPage,
+    pageSize: resolvedSize,
+    totalPages: Math.max(1, Math.ceil(totalCount / resolvedSize)),
+  };
 }
 
-/** Messages for a conversation the current user can access. */
+/** Convenience: first page of conversations (existing call sites). */
+export async function getConversations(): Promise<Conversation[]> {
+  const result = await listConversations({
+    page: 1,
+    pageSize: CONVERSATIONS_PER_PAGE,
+  });
+  return result.conversations;
+}
+
+/** Paginated chronological messages for a conversation. */
+export async function listMessages(
+  params: ListMessagesParams,
+): Promise<MessagesPageResult> {
+  await requireAuthContext();
+
+  const pageSize = params.pageSize ?? MESSAGES_PER_PAGE;
+  const page = params.page ?? 1;
+  const { rows, totalCount, page: resolvedPage, pageSize: resolvedSize } =
+    await queryMessagesPage({
+      conversationId: params.conversationId,
+      page,
+      pageSize,
+    });
+
+  return {
+    messages: rows.map(mapMessageRow),
+    totalCount,
+    page: resolvedPage,
+    pageSize: resolvedSize,
+    totalPages: Math.max(1, Math.ceil(totalCount / resolvedSize)),
+  };
+}
+
+/** Convenience: first page of messages for a conversation. */
 export async function getMessages(
   conversationId: string,
 ): Promise<ChatMessage[]> {
-  if (!conversationId) {
-    throw new Error("Conversation id is required.");
-  }
-
-  await requireAuthContext();
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("messages")
-    .select(
-      "id, conversation_id, sender_user_id, sender_role, message, created_at",
-    )
-    .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return ((data as MessageRow[] | null) ?? []).map(mapMessageRow);
+  const result = await listMessages({
+    conversationId,
+    page: 1,
+    pageSize: MESSAGES_PER_PAGE,
+  });
+  return result.messages;
 }
 
 /** Send a message as the current player or college user. */
@@ -442,27 +468,16 @@ export async function sendMessage(
   }
 
   const ctx = await requireAuthContext();
-  const supabase = createClient();
-  const senderRole: SenderRole = ctx.role === "college" ? "college" : "player";
+  const senderRole = ctx.role === "college" ? "college" : "player";
 
-  const { data, error } = await supabase
-    .from("messages")
-    .insert({
-      conversation_id: conversationId,
-      sender_user_id: ctx.userId,
-      sender_role: senderRole,
-      message: body,
-    })
-    .select(
-      "id, conversation_id, sender_user_id, sender_role, message, created_at",
-    )
-    .single();
+  const row = await insertMessage({
+    conversationId,
+    senderUserId: ctx.userId,
+    senderRole,
+    message: body,
+  });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const chatMessage = mapMessageRow(data as MessageRow);
+  const chatMessage = mapMessageRow(row);
 
   try {
     await notifyMessageReceiver({
@@ -480,39 +495,17 @@ export async function sendMessage(
 
 async function notifyMessageReceiver(input: {
   conversationId: string;
-  senderRole: SenderRole;
+  senderRole: "player" | "college";
   messageBody: string;
   messageId: string;
 }): Promise<void> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("conversations")
-    .select(
-      `
-      id,
-      players ( user_id, full_name ),
-      colleges ( user_id, school_name )
-    `,
-    )
-    .eq("id", input.conversationId)
-    .maybeSingle();
-
-  if (error || !data) {
-    throw new Error(error?.message ?? "Conversation not found.");
+  const conversation = await queryConversationById(input.conversationId);
+  if (!conversation) {
+    throw new Error("Conversation not found.");
   }
 
-  const players = data.players as
-    | { user_id: string | null; full_name: string | null }
-    | { user_id: string | null; full_name: string | null }[]
-    | null;
-  const colleges = data.colleges as
-    | { user_id: string | null; school_name: string | null }
-    | { user_id: string | null; school_name: string | null }[]
-    | null;
-
-  const player = Array.isArray(players) ? players[0] : players;
-  const college = Array.isArray(colleges) ? colleges[0] : colleges;
+  const player = unwrapPlayer(conversation.players);
+  const college = unwrapCollege(conversation.colleges);
 
   const receiverUserId =
     input.senderRole === "college" ? player?.user_id : college?.user_id;
@@ -525,54 +518,30 @@ async function notifyMessageReceiver(input: {
       ? college?.school_name?.trim() || "a college coach"
       : player?.full_name?.trim() || "a player";
 
-  await notifyNewMessage({
-    receiverUserId,
-    senderLabel,
-    messageBody: input.messageBody,
-    conversationId: input.conversationId,
-    messageId: input.messageId,
+  const preview =
+    input.messageBody.length > 120
+      ? `${input.messageBody.slice(0, 117)}...`
+      : input.messageBody;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("create_notification", {
+    target_user_id: receiverUserId,
+    notification_type: NOTIFICATION_TYPES.newMessage,
+    notification_title: `New message from ${senderLabel}`,
+    notification_message: preview,
+    notification_metadata: {
+      conversationId: input.conversationId,
+      messageId: input.messageId,
+    } as Json,
   });
-}
 
-/**
- * Subscribe to new messages in a conversation (Supabase Realtime).
- * Returns an unsubscribe function.
- */
-export function subscribeToMessages(
-  conversationId: string,
-  onMessage: (message: ChatMessage) => void,
-): () => void {
-  if (!conversationId) {
-    return () => {};
+  if (error) {
+    throw new Error(error.message);
   }
-
-  const supabase = createClient();
-  const channel = supabase
-    .channel(`messages:${conversationId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: `conversation_id=eq.${conversationId}`,
-      },
-      (payload) => {
-        const row = payload.new as MessageRow;
-        if (!row?.id) return;
-        onMessage(mapMessageRow(row));
-      },
-    )
-    .subscribe();
-
-  return () => {
-    void supabase.removeChannel(channel);
-  };
 }
 
 /**
  * Get or create the unique conversation between the current college and a player.
- * Used when starting a thread from recruiting flows.
  */
 export async function getOrCreateConversation(
   playerId: string,
@@ -586,35 +555,11 @@ export async function getOrCreateConversation(
     throw new Error("Only colleges can start conversations with players.");
   }
 
-  const supabase = createClient();
+  const existing = await queryConversationIdBetween(ctx.collegeId, playerId);
+  if (existing) return existing;
 
-  const { data: existing, error: existingError } = await supabase
-    .from("conversations")
-    .select("id")
-    .eq("college_id", ctx.collegeId)
-    .eq("player_id", playerId)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(existingError.message);
-  }
-
-  if (existing?.id) {
-    return existing.id as string;
-  }
-
-  const { data: created, error: createError } = await supabase
-    .from("conversations")
-    .insert({
-      college_id: ctx.collegeId,
-      player_id: playerId,
-    })
-    .select("id")
-    .single();
-
-  if (createError) {
-    throw new Error(createError.message);
-  }
-
-  return created.id as string;
+  return insertConversation({
+    collegeId: ctx.collegeId,
+    playerId,
+  });
 }

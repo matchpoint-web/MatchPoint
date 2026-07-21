@@ -5,11 +5,10 @@ import { ConversationList } from "./ConversationList";
 import { ChatWindow, type MessagesViewerRole } from "./ChatWindow";
 import { type Conversation } from "@/lib/college-messages";
 import {
-  getConversations,
-  getMessages,
-  sendMessage as sendMessageService,
-  subscribeToMessages,
-} from "@/lib/messages-service";
+  getConversationsAction,
+  getMessagesAction,
+  sendMessageAction,
+} from "@/lib/messages/actions";
 
 type MessagesClientProps = {
   initialConversationId?: string | null;
@@ -70,8 +69,8 @@ export function MessagesClient({
     void (async () => {
       try {
         const [messages, list] = await Promise.all([
-          getMessages(id),
-          getConversations(),
+          getMessagesAction(id),
+          getConversationsAction(),
         ]);
 
         setConversations(() =>
@@ -102,7 +101,7 @@ export function MessagesClient({
 
     async function load() {
       try {
-        const next = await getConversations();
+        const next = await getConversationsAction();
         if (cancelled) return;
         setConversations(next);
         setLoaded(true);
@@ -110,7 +109,7 @@ export function MessagesClient({
         if (initialConversationId) {
           let list = next;
           if (!list.some((c) => c.id === initialConversationId)) {
-            list = await getConversations();
+            list = await getConversationsAction();
             if (cancelled) return;
             setConversations(list);
           }
@@ -132,21 +131,11 @@ export function MessagesClient({
     };
   }, [initialConversationId, selectConversation]);
 
-  useEffect(() => {
-    if (!activeId) return;
-
-    const unsubscribe = subscribeToMessages(activeId, (message) => {
-      appendMessage(activeId, message);
-    });
-
-    return unsubscribe;
-  }, [activeId, appendMessage]);
-
   async function sendMessage(body: string) {
     if (!active) return;
 
     try {
-      const message = await sendMessageService(active.id, body);
+      const message = await sendMessageAction(active.id, body);
       appendMessage(active.id, message);
       setDraft("");
     } catch {
