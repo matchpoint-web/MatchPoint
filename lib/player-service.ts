@@ -5,6 +5,10 @@ import {
   type Player,
   type PreferredDivision,
 } from "@/lib/players";
+import {
+  PLAYER_SEARCH_SELECT,
+  type PlayerSearchRow,
+} from "@/lib/players/search-queries";
 import { defaultProfileStrength } from "@/lib/profile-strength";
 
 export type { Player };
@@ -50,8 +54,7 @@ export type PlayerDetail = Player & {
 
 type PlayerRow = Tables<"players">;
 
-const PLAYER_SELECT =
-  "id, full_name, nationality, graduation_year, utr, gpa, height, weight, dominant_hand, backhand, date_of_birth, bio, profile_image_url, created_at";
+const PLAYER_SELECT = PLAYER_SEARCH_SELECT;
 
 const COUNTRY_FLAGS: Record<string, string> = {
   "United States": "🇺🇸",
@@ -136,7 +139,8 @@ function ageFromDateOfBirth(dateOfBirth: string | null): number {
   return age > 0 ? age : 0;
 }
 
-function mapRowToPlayer(row: PlayerRow): Player {
+/** Map a players search/list row to the college recruiting card shape. */
+export function mapPlayerSearchRowToPlayer(row: PlayerSearchRow): Player {
   const handedness = normalizeHandedness(row.dominant_hand);
   const country = row.nationality ?? "";
 
@@ -159,6 +163,10 @@ function mapRowToPlayer(row: PlayerRow): Player {
     createdAt: row.created_at,
     initials: initialsFromName(row.full_name || "Unnamed Player"),
   };
+}
+
+function mapRowToPlayer(row: PlayerRow): Player {
+  return mapPlayerSearchRowToPlayer(row);
 }
 
 function mapRowToPlayerDetail(row: PlayerRow): PlayerDetail {
@@ -211,25 +219,29 @@ function mapRowToPlayerDetail(row: PlayerRow): PlayerDetail {
 }
 
 /**
- * Fetch all players for college recruiting search.
- * UI must not call Supabase directly — use this helper.
+ * Fetch players linked to authenticated users (dashboard / legacy callers).
+ * Prefer `searchPlayers` for College Player Search (filters + pagination).
  */
 export async function getPlayers(): Promise<Player[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("players")
     .select(PLAYER_SELECT)
+    .not("user_id", "is", null)
     .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return ((data as PlayerRow[] | null) ?? []).map(mapRowToPlayer);
+  return ((data as PlayerSearchRow[] | null) ?? []).map(
+    mapPlayerSearchRowToPlayer,
+  );
 }
 
 /**
  * Fetch a single player profile by id for college view.
+ * Only returns players linked to an authenticated user.
  */
 export async function getPlayer(id: string): Promise<PlayerDetail | null> {
   const supabase = await createClient();
@@ -237,6 +249,7 @@ export async function getPlayer(id: string): Promise<PlayerDetail | null> {
     .from("players")
     .select(PLAYER_SELECT)
     .eq("id", id)
+    .not("user_id", "is", null)
     .maybeSingle();
 
   if (error) {
@@ -249,6 +262,7 @@ export async function getPlayer(id: string): Promise<PlayerDetail | null> {
 
 /**
  * Resolve players by ids (saved list, dashboard, etc.).
+ * Only returns players linked to authenticated users.
  */
 export async function getPlayersByIds(ids: string[]): Promise<Player[]> {
   if (ids.length === 0) return [];
@@ -258,16 +272,17 @@ export async function getPlayersByIds(ids: string[]): Promise<Player[]> {
   const { data, error } = await supabase
     .from("players")
     .select(PLAYER_SELECT)
-    .in("id", uniqueIds);
+    .in("id", uniqueIds)
+    .not("user_id", "is", null);
 
   if (error) {
     throw new Error(error.message);
   }
 
   const byId = new Map(
-    ((data as PlayerRow[] | null) ?? []).map((row) => [
+    ((data as PlayerSearchRow[] | null) ?? []).map((row) => [
       row.id,
-      mapRowToPlayer(row),
+      mapPlayerSearchRowToPlayer(row),
     ]),
   );
 

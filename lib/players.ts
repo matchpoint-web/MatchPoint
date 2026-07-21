@@ -1,6 +1,7 @@
 /**
- * Shared player domain types and college player-search filter helpers.
- * Player list/detail data comes from lib/player-service.ts (Supabase).
+ * Shared player domain types and college player-search filter option helpers.
+ * List/search data comes from lib/player-search-service.ts (Supabase).
+ * Filter matching for the UI options is applied in lib/players/search-queries.ts.
  */
 
 export type AcademicTest =
@@ -146,59 +147,6 @@ export const filterOptions = {
     { value: "200+", label: "200 cm+" },
   ],
 };
-
-const listedCountries = filterOptions.countries.filter((c) => c !== "Other");
-const listedGradYears = filterOptions.graduationYears.filter((y) => y !== "Other");
-
-export function matchesCountryFilter(country: string, filter: string): boolean {
-  if (!filter) return true;
-  if (filter === "Other") return !listedCountries.includes(country);
-  return country === filter;
-}
-
-export function matchesGraduationYearFilter(year: string, filter: string): boolean {
-  if (!filter) return true;
-  if (filter === "Other") return !listedGradYears.includes(year);
-  return year === filter;
-}
-
-export function matchesUtrRange(utr: number, range: string): boolean {
-  if (!range) return true;
-  const ranges: Record<string, [number, number | null]> = {
-    "6-7": [6, 7],
-    "7-8": [7, 8],
-    "8-9": [8, 9],
-    "9-10": [9, 10],
-    "10-11": [10, 11],
-    "11-12": [11, 12],
-    "12-13": [12, 13],
-    "13-14": [13, 14],
-    "14+": [14, null],
-  };
-  const bounds = ranges[range];
-  if (!bounds) return true;
-  const [min, max] = bounds;
-  if (max === null) return utr >= min;
-  return utr >= min && utr < max;
-}
-
-export function matchesGpaRange(gpa: number, range: string): boolean {
-  if (!range) return true;
-  switch (range) {
-    case "below-2":
-      return gpa < 2;
-    case "2-2.5":
-      return gpa >= 2 && gpa < 2.5;
-    case "2.5-3":
-      return gpa >= 2.5 && gpa < 3;
-    case "3-3.5":
-      return gpa >= 3 && gpa < 3.5;
-    case "3.5-4":
-      return gpa >= 3.5 && gpa <= 4;
-    default:
-      return true;
-  }
-}
 
 export type SortOption = "highest-utr" | "highest-gpa" | "newest";
 

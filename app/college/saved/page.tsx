@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { PlayerSearchSkeleton } from "@/components/college/players/PlayerSearchSkeleton";
 import { SavedPlayersClient } from "@/components/college/players/SavedPlayersClient";
-import { getPlayers } from "@/lib/player-service";
+import { getPlayersByIds } from "@/lib/player-service";
 import {
   getCurrentCollegeId,
   getSavedPlayers,
@@ -9,17 +9,16 @@ import {
 
 async function SavedPlayersLoader() {
   try {
-    const [players, collegeId] = await Promise.all([
-      getPlayers(),
-      getCurrentCollegeId(),
-    ]);
+    const collegeId = await getCurrentCollegeId();
     const saved = collegeId ? await getSavedPlayers(collegeId) : [];
+    const savedIds = saved.map((entry) => entry.player_id);
+    const players = await getPlayersByIds(savedIds);
 
     return (
       <SavedPlayersClient
         players={players}
         collegeId={collegeId}
-        initialSavedIds={saved.map((entry) => entry.player_id)}
+        initialSavedIds={savedIds}
       />
     );
   } catch {

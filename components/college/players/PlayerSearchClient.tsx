@@ -1,24 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { PlayerCard } from "./PlayerCard";
 import { PlayerSearchFilters } from "./PlayerSearchFilters";
 import {
   defaultFilters,
-  matchesCountryFilter,
-  matchesGpaRange,
-  matchesGraduationYearFilter,
-  matchesUtrRange,
-  PLAYERS_PER_PAGE,
   sortOptions,
   type PlayerFilters,
   type SortOption,
 } from "@/lib/players";
 import { type Player } from "@/lib/player-service";
+import {
+  searchPlayersAction,
+} from "@/lib/players/search-actions";
+import type { PlayerSearchResult } from "@/lib/player-search-service";
 import { toggleSavedPlayerAction } from "@/lib/saved-players/actions";
 
 type PlayerSearchClientProps = {
-  players: Player[];
+  initialResult: PlayerSearchResult;
   collegeId: string | null;
   initialSavedIds: string[];
   error?: string | null;
@@ -33,48 +32,8 @@ function countActiveFilters(filters: PlayerFilters): number {
   return count;
 }
 
-function filterPlayers(
-  players: Player[],
-  query: string,
-  filters: PlayerFilters,
-) {
-  const q = query.trim().toLowerCase();
-
-  return players.filter((player) => {
-    if (q && !player.name.toLowerCase().includes(q)) return false;
-    if (!matchesCountryFilter(player.country, filters.country)) return false;
-    if (
-      !matchesGraduationYearFilter(
-        player.graduationYear,
-        filters.graduationYear,
-      )
-    ) {
-      return false;
-    }
-    if (!matchesUtrRange(player.utr, filters.utrRange)) return false;
-    if (!matchesGpaRange(player.gpa, filters.gpaRange)) return false;
-    return true;
-  });
-}
-
-function sortPlayers(players: Player[], sort: SortOption) {
-  const sorted = [...players];
-  switch (sort) {
-    case "highest-gpa":
-      return sorted.sort((a, b) => b.gpa - a.gpa);
-    case "newest":
-      return sorted.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    case "highest-utr":
-    default:
-      return sorted.sort((a, b) => b.utr - a.utr);
-  }
-}
-
 export function PlayerSearchClient({
-  players,
+  initialResult,
   collegeId,
   initialSavedIds,
   error = null,
@@ -82,41 +41,73 @@ export function PlayerSearchClient({
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<PlayerFilters>(defaultFilters);
   const [sort, setSort] = useState<SortOption>("highest-utr");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialResult.page);
+  const [result, setResult] = useState<PlayerSearchResult>(initialResult);
   const [savedIds, setSavedIds] = useState<Set<string>>(
     () => new Set(initialSavedIds),
   );
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     setSavedIds(new Set(initialSavedIds));
   }, [initialSavedIds]);
 
-  const filtered = useMemo(
-    () => sortPlayers(filterPlayers(players, query, filters), sort),
-    [players, query, filters, sort],
-  );
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PLAYERS_PER_PAGE));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice(
-    (currentPage - 1) * PLAYERS_PER_PAGE,
-    currentPage * PLAYERS_PER_PAGE,
+  const runSearch = useCallback(
+    (next: {
+      query: string;
+      filters: PlayerFilters;
+      sort: SortOption;
+      page: number;
+    }) => {
+      const requestId = ++requestIdRef.current;
+      startTransition(async () => {
+        try {
+          const nextResult = await searchPlayersAction({
+            query: next.query,
+            filters: next.filters,
+            sort: next.sort,
+            page: next.page,
+          });
+          if (requestId !== requestIdRef.current) return;
+          setResult(nextResult);
+          setPage(nextResult.page);
+        } catch {
+          if (requestId !== requestIdRef.current) return;
+          setResult({
+            players: [],
+            totalCount: 0,
+            page: 1,
+            pageSize: initialResult.pageSize,
+            totalPages: 1,
+          });
+        }
+      });
+    },
+    [initialResult.pageSize],
   );
 
   function handleSearchChange(value: string) {
     setQuery(value);
     setPage(1);
+    runSearch({ query: value, filters, sort, page: 1 });
   }
 
   function handleFiltersChange(next: PlayerFilters) {
     setFilters(next);
     setPage(1);
+    runSearch({ query, filters: next, sort, page: 1 });
   }
 
   function handleSortChange(value: SortOption) {
     setSort(value);
     setPage(1);
+    runSearch({ query, filters, sort: value, page: 1 });
+  }
+
+  function handlePageChange(nextPage: number) {
+    setPage(nextPage);
+    runSearch({ query, filters, sort, page: nextPage });
   }
 
   function handleToggleSave(id: string) {
@@ -164,6 +155,9 @@ export function PlayerSearchClient({
     );
   }
 
+  const { players, totalCount, totalPages } = result;
+  const currentPage = Math.min(page, totalPages);
+
   return (
     <>
       <div className="relative mb-6">
@@ -201,8 +195,8 @@ export function PlayerSearchClient({
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-500">
-          <span className="font-medium text-zinc-300">{filtered.length}</span>{" "}
-          {filtered.length === 1 ? "player" : "players"} found
+          <span className="font-medium text-zinc-300">{totalCount}</span>{" "}
+          {totalCount === 1 ? "player" : "players"} found
         </p>
 
         <div className="flex items-center gap-3">
@@ -228,9 +222,9 @@ export function PlayerSearchClient({
         </div>
       </div>
 
-      {paginated.length > 0 ? (
+      {players.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {paginated.map((player) => (
+          {players.map((player: Player) => (
             <PlayerCard
               key={player.id}
               player={player}
@@ -252,8 +246,8 @@ export function PlayerSearchClient({
         <div className="mt-10 flex items-center justify-center gap-2">
           <button
             type="button"
-            disabled={currentPage === 1}
-            onClick={() => setPage((p) => p - 1)}
+            disabled={currentPage === 1 || isPending}
+            onClick={() => handlePageChange(currentPage - 1)}
             className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-400 transition-all hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
@@ -263,7 +257,8 @@ export function PlayerSearchClient({
             <button
               key={p}
               type="button"
-              onClick={() => setPage(p)}
+              disabled={isPending}
+              onClick={() => handlePageChange(p)}
               className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-medium transition-all ${
                 p === currentPage
                   ? "bg-emerald-500 text-black"
@@ -276,8 +271,8 @@ export function PlayerSearchClient({
 
           <button
             type="button"
-            disabled={currentPage === totalPages}
-            onClick={() => setPage((p) => p + 1)}
+            disabled={currentPage === totalPages || isPending}
+            onClick={() => handlePageChange(currentPage + 1)}
             className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-400 transition-all hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next

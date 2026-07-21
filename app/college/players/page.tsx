@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { PlayerSearchClient } from "@/components/college/players/PlayerSearchClient";
 import { PlayerSearchSkeleton } from "@/components/college/players/PlayerSearchSkeleton";
-import { getPlayers } from "@/lib/player-service";
+import { searchPlayers } from "@/lib/player-search-service";
+import { PLAYERS_PER_PAGE } from "@/lib/players";
 import {
   getCurrentCollegeId,
   getSavedPlayers,
@@ -9,8 +10,8 @@ import {
 
 async function PlayerSearchLoader() {
   try {
-    const [players, collegeId] = await Promise.all([
-      getPlayers(),
+    const [initialResult, collegeId] = await Promise.all([
+      searchPlayers(),
       getCurrentCollegeId(),
     ]);
 
@@ -18,7 +19,7 @@ async function PlayerSearchLoader() {
 
     return (
       <PlayerSearchClient
-        players={players}
+        initialResult={initialResult}
         collegeId={collegeId}
         initialSavedIds={saved.map((entry) => entry.player_id)}
       />
@@ -26,7 +27,13 @@ async function PlayerSearchLoader() {
   } catch {
     return (
       <PlayerSearchClient
-        players={[]}
+        initialResult={{
+          players: [],
+          totalCount: 0,
+          page: 1,
+          pageSize: PLAYERS_PER_PAGE,
+          totalPages: 1,
+        }}
         collegeId={null}
         initialSavedIds={[]}
         error="Unable to load players"
