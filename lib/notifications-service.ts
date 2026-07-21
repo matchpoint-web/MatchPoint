@@ -1,13 +1,37 @@
-import { createClient } from "@/lib/supabase/client";
-import type { Json, Tables } from "@/lib/database.types";
+import type { Json } from "@/lib/database.types";
 import {
   NOTIFICATION_TYPES,
   toUiNotificationType,
   type CreateNotificationInput,
   type PlayerNotification,
 } from "@/lib/player-notifications";
+import { createClient } from "@/lib/supabase/server";
+import {
+  countUnreadNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  NOTIFICATIONS_PER_PAGE,
+  queryNotificationsPage,
+  queryRecentNotifications,
+  rpcCreateNotification,
+  type NotificationRow,
+} from "@/lib/notifications/queries";
 
-type NotificationRow = Tables<"notifications">;
+export type NotificationsPageResult = {
+  notifications: PlayerNotification[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type NotifyNewMessageInput = {
+  receiverUserId: string;
+  senderLabel: string;
+  messageBody: string;
+  conversationId: string;
+  messageId: string;
+};
 
 function metadataToRecord(
   metadata: Json | null,
@@ -19,7 +43,8 @@ function metadataToRecord(
   return null;
 }
 
-function mapRow(row: NotificationRow): PlayerNotification {
+/** Map a DB notification row to the UI notification shape. */
+export function mapNotificationRow(row: NotificationRow): PlayerNotification {
   return {
     id: row.id,
     type: toUiNotificationType(row.type),
@@ -32,7 +57,7 @@ function mapRow(row: NotificationRow): PlayerNotification {
 }
 
 async function requireUserId(): Promise<string> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error,
@@ -46,10 +71,9 @@ async function requireUserId(): Promise<string> {
 }
 
 /**
- * Internal create path used only by service helpers (not React components).
- * Goes through SECURITY DEFINER RPC — clients have no INSERT policy.
+ * Create via SECURITY DEFINER RPC — used by event services, not the UI.
  */
-async function createNotification(
+export async function createNotification(
   input: CreateNotificationInput,
 ): Promise<PlayerNotification> {
   if (!input.userId) {
@@ -62,89 +86,73 @@ async function createNotification(
     throw new Error("title and message are required.");
   }
 
+  // Ensure caller is authenticated; RPC enforces cross-user rules.
   await requireUserId();
-  const supabase = createClient();
 
-  const { data, error } = await supabase.rpc("create_notification", {
-    target_user_id: input.userId,
-    notification_type: input.type.trim(),
-    notification_title: input.title.trim(),
-    notification_message: input.message.trim(),
-    notification_metadata: (input.metadata ?? null) as Json | null,
+  const row = await rpcCreateNotification({
+    targetUserId: input.userId,
+    type: input.type.trim(),
+    title: input.title.trim(),
+    message: input.message.trim(),
+    metadata: (input.metadata ?? null) as Json | null,
   });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return mapRow(data as NotificationRow);
+  return mapNotificationRow(row);
 }
 
-/** Notifications for the current user (newest first). */
-export async function getNotifications(): Promise<PlayerNotification[]> {
+/** Paginated notifications for the current user (newest first). */
+export async function listNotifications(params: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<NotificationsPageResult> {
   const userId = await requireUserId();
-  const supabase = createClient();
+  const pageSize = params.pageSize ?? NOTIFICATIONS_PER_PAGE;
+  const page = params.page ?? 1;
 
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("id, user_id, type, title, message, metadata, is_read, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+  const { rows, totalCount, page: resolvedPage, pageSize: resolvedSize } =
+    await queryNotificationsPage({
+      userId,
+      page,
+      pageSize,
+    });
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return ((data as NotificationRow[] | null) ?? []).map(mapRow);
+  return {
+    notifications: rows.map(mapNotificationRow),
+    totalCount,
+    page: resolvedPage,
+    pageSize: resolvedSize,
+    totalPages: Math.max(1, Math.ceil(totalCount / resolvedSize)),
+  };
 }
 
-/** Mark a single notification as read. */
+/** First page convenience helper. */
+export async function getNotifications(): Promise<PlayerNotification[]> {
+  const result = await listNotifications({
+    page: 1,
+    pageSize: NOTIFICATIONS_PER_PAGE,
+  });
+  return result.notifications;
+}
+
+/** Mark a single notification as read (own rows only). */
 export async function markAsRead(notificationId: string): Promise<void> {
-  if (!notificationId) {
+  if (!notificationId?.trim()) {
     throw new Error("Notification id is required.");
   }
 
   const userId = await requireUserId();
-  const supabase = createClient();
-
-  const { error } = await supabase
-    .from("notifications")
-    .update({ is_read: true })
-    .eq("id", notificationId)
-    .eq("user_id", userId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await markNotificationRead(userId, notificationId.trim());
 }
 
-/** Mark all of the current user's notifications as read. */
+/** Mark all of the current user's unread notifications as read. */
 export async function markAllAsRead(): Promise<void> {
   const userId = await requireUserId();
-  const supabase = createClient();
-
-  const { error } = await supabase
-    .from("notifications")
-    .update({ is_read: true })
-    .eq("user_id", userId)
-    .eq("is_read", false);
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await markAllNotificationsRead(userId);
 }
 
-export type NotifyNewMessageInput = {
-  receiverUserId: string;
-  senderLabel: string;
-  messageBody: string;
-  conversationId: string;
-  messageId: string;
-};
-
 /**
- * Only supported cross-user notification creator today.
- * Called from the messages service after a successful send — not from UI.
+ * Cross-user new-message notification (authorized by create_notification RPC).
+ * Called from the messages service after a successful send.
  */
 export async function notifyNewMessage(
   input: NotifyNewMessageInput,
@@ -168,7 +176,7 @@ export async function notifyNewMessage(
 
 /**
  * Reserved for future event services (saved player, profile view, etc.).
- * Uses the same table + RPC; add authorization for the type in SQL when enabling.
+ * Cross-user types need matching rules in can_create_notification_for.
  */
 export async function notifyEvent(
   input: CreateNotificationInput,
@@ -176,66 +184,25 @@ export async function notifyEvent(
   return createNotification(input);
 }
 
-export type NotificationChange =
-  | { event: "INSERT"; notification: PlayerNotification }
-  | { event: "UPDATE"; notification: PlayerNotification };
-
-/**
- * Subscribe to notification inserts/updates for the current user.
- * Returns an unsubscribe function.
- */
-export function subscribeToNotifications(
-  onChange: (change: NotificationChange) => void,
-): () => void {
-  const supabase = createClient();
-  let channel: ReturnType<typeof supabase.channel> | null = null;
-  let cancelled = false;
-
-  void (async () => {
-    try {
-      const userId = await requireUserId();
-      if (cancelled) return;
-
-      channel = supabase
-        .channel(`notifications:${userId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${userId}`,
-          },
-          (payload) => {
-            const row = payload.new as NotificationRow;
-            if (!row?.id) return;
-            onChange({ event: "INSERT", notification: mapRow(row) });
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${userId}`,
-          },
-          (payload) => {
-            const row = payload.new as NotificationRow;
-            if (!row?.id) return;
-            onChange({ event: "UPDATE", notification: mapRow(row) });
-          },
-        )
-        .subscribe();
-    } catch {
-      // Subscriber stays idle if unauthenticated.
-    }
-  })();
-
-  return () => {
-    cancelled = true;
-    if (channel) {
-      void supabase.removeChannel(channel);
-    }
-  };
+/** Unread count for dashboards (optional type filter). */
+export async function getUnreadNotificationCount(
+  type?: string,
+): Promise<number> {
+  const userId = await requireUserId();
+  return countUnreadNotifications(userId, type);
 }
+
+/** Recent notifications for dashboard activity feeds. */
+export async function getRecentUserNotifications(
+  limit = 5,
+): Promise<PlayerNotification[]> {
+  const userId = await requireUserId();
+  const rows = await queryRecentNotifications(userId, limit);
+  return rows.map(mapNotificationRow);
+}
+
+/** Shared helpers for other server services that already have userId. */
+export {
+  countUnreadNotifications,
+  queryRecentNotifications,
+} from "@/lib/notifications/queries";

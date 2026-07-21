@@ -278,55 +278,6 @@ export async function insertConversation(input: {
   return data.id;
 }
 
-export async function querySavedPlayerIds(
-  collegeId: string,
-  playerIds: string[],
-): Promise<string[]> {
-  if (playerIds.length === 0) return [];
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("saved_players")
-    .select("player_id")
-    .eq("college_id", collegeId)
-    .in("player_id", playerIds);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? [])
-    .map((row) => row.player_id)
-    .filter((id): id is string => typeof id === "string");
-}
-
-export async function queryCoachNoteStatuses(
-  collegeId: string,
-  playerIds: string[],
-): Promise<Map<string, string>> {
-  const result = new Map<string, string>();
-  if (playerIds.length === 0) return result;
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("coach_notes")
-    .select("player_id, status")
-    .eq("college_id", collegeId)
-    .in("player_id", playerIds);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  for (const row of data ?? []) {
-    if (row.player_id && typeof row.status === "string") {
-      result.set(row.player_id, row.status);
-    }
-  }
-
-  return result;
-}
-
 export async function queryCollegeIdForUser(
   userId: string,
 ): Promise<string | null> {

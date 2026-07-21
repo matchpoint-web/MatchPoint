@@ -7,10 +7,10 @@ import {
   type DocumentTypeId,
   type PlayerDocumentsState,
 } from "@/lib/player-documents";
-import { uploadDocumentFileToStorage } from "@/lib/player-documents-browser";
 import {
   deleteDocumentAction,
-  saveDocumentMetadataAction,
+  saveDocumentUrlAction,
+  uploadDocumentFileAction,
 } from "@/lib/player-documents/actions";
 
 type ToastState = {
@@ -20,7 +20,7 @@ type ToastState = {
 
 /**
  * Shared documents state + upload/remove handlers for Documents + Profile pages.
- * File binaries upload directly to Supabase Storage from the browser.
+ * File binaries upload through Server Actions → service → Storage.
  */
 export function usePlayerDocuments(initialDocuments: PlayerDocumentsState) {
   const [documents, setDocuments] =
@@ -57,29 +57,17 @@ export function usePlayerDocuments(initialDocuments: PlayerDocumentsState) {
         DOCUMENT_DEFINITIONS.find((def) => def.id === id)?.title ?? "Document";
 
       startTransition(async () => {
-        try {
-          const { storagePath, fileName } = await uploadDocumentFileToStorage(
-            id,
-            file,
-          );
-          const result = await saveDocumentMetadataAction(id, {
-            fileName,
-            storagePath,
-            publicUrl: null,
-          });
+        const formData = new FormData();
+        formData.set("file", file);
+        const result = await uploadDocumentFileAction(id, formData);
 
-          if (result.error || !result.documents) {
-            showToast(result.error ?? "Upload failed.", "error");
-            return;
-          }
-
-          setDocuments(result.documents);
-          showToast(`${title} uploaded successfully.`, "success");
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Upload failed.";
-          showToast(message, "error");
+        if (result.error || !result.documents) {
+          showToast(result.error ?? "Upload failed.", "error");
+          return;
         }
+
+        setDocuments(result.documents);
+        showToast(`${title} uploaded successfully.`, "success");
       });
     },
     [showToast],
@@ -88,11 +76,7 @@ export function usePlayerDocuments(initialDocuments: PlayerDocumentsState) {
   const uploadUrl = useCallback(
     (id: DocumentTypeId, url: string) => {
       startTransition(async () => {
-        const result = await saveDocumentMetadataAction(id, {
-          fileName: null,
-          storagePath: null,
-          publicUrl: url,
-        });
+        const result = await saveDocumentUrlAction(id, url);
 
         if (result.error || !result.documents) {
           showToast(result.error ?? "Failed to save URL.", "error");

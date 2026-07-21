@@ -1,4 +1,3 @@
-import type { Json } from "@/lib/database.types";
 import { getUserRole } from "@/lib/auth/utils";
 import type { PreferredDivision } from "@/lib/players";
 import type {
@@ -7,14 +6,13 @@ import type {
   MessageSender,
   RecruitingStatus,
 } from "@/lib/college-messages";
-import { NOTIFICATION_TYPES } from "@/lib/player-notifications";
+import { notifyNewMessage } from "@/lib/notifications-service";
 import { createClient } from "@/lib/supabase/server";
 import {
   CONVERSATIONS_PER_PAGE,
   insertConversation,
   insertMessage,
   MESSAGES_PER_PAGE,
-  queryCoachNoteStatuses,
   queryConversationById,
   queryConversationIdBetween,
   queryConversationsPage,
@@ -22,11 +20,12 @@ import {
   queryMessagesPage,
   queryCollegeIdForUser,
   queryPlayerIdForUser,
-  querySavedPlayerIds,
   type ConversationRow,
   type MessageRow,
   type MessagingAuthScope,
 } from "@/lib/messages/queries";
+import { queryCoachNoteStatuses } from "@/lib/coach-notes/queries";
+import { querySavedPlayerIds } from "@/lib/saved-players/queries";
 
 export type MessagesAuthContext =
   | { role: "college"; userId: string; collegeId: string; playerId: null }
@@ -518,26 +517,13 @@ async function notifyMessageReceiver(input: {
       ? college?.school_name?.trim() || "a college coach"
       : player?.full_name?.trim() || "a player";
 
-  const preview =
-    input.messageBody.length > 120
-      ? `${input.messageBody.slice(0, 117)}...`
-      : input.messageBody;
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("create_notification", {
-    target_user_id: receiverUserId,
-    notification_type: NOTIFICATION_TYPES.newMessage,
-    notification_title: `New message from ${senderLabel}`,
-    notification_message: preview,
-    notification_metadata: {
-      conversationId: input.conversationId,
-      messageId: input.messageId,
-    } as Json,
+  await notifyNewMessage({
+    receiverUserId,
+    senderLabel,
+    messageBody: input.messageBody,
+    conversationId: input.conversationId,
+    messageId: input.messageId,
   });
-
-  if (error) {
-    throw new Error(error.message);
-  }
 }
 
 /**

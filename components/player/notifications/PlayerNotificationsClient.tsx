@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NotificationItem } from "./NotificationItem";
 import { type PlayerNotification } from "@/lib/player-notifications";
 import {
-  getNotifications,
-  markAllAsRead as markAllAsReadService,
-  markAsRead as markAsReadService,
-  subscribeToNotifications,
-} from "@/lib/notifications-service";
+  getNotificationsAction,
+  markAllAsReadAction,
+  markAsReadAction,
+} from "@/lib/notifications/actions";
 
 export function PlayerNotificationsClient() {
   const [notifications, setNotifications] = useState<PlayerNotification[]>([]);
@@ -20,22 +19,12 @@ export function PlayerNotificationsClient() {
     [notifications],
   );
 
-  const upsertNotification = useCallback((notification: PlayerNotification) => {
-    setNotifications((prev) => {
-      const without = prev.filter((item) => item.id !== notification.id);
-      return [notification, ...without].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    });
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const next = await getNotifications();
+        const next = await getNotificationsAction();
         if (!cancelled) {
           setNotifications(next);
         }
@@ -56,22 +45,14 @@ export function PlayerNotificationsClient() {
     };
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = subscribeToNotifications((change) => {
-      upsertNotification(change.notification);
-    });
-    return unsubscribe;
-  }, [upsertNotification]);
-
   async function markAllAsRead() {
     const previous = notifications;
     setNotifications((prev) =>
       prev.map((item) => ({ ...item, unread: false })),
     );
 
-    try {
-      await markAllAsReadService();
-    } catch {
+    const result = await markAllAsReadAction();
+    if (result.error) {
       setNotifications(previous);
     }
   }
@@ -87,9 +68,8 @@ export function PlayerNotificationsClient() {
       ),
     );
 
-    try {
-      await markAsReadService(id);
-    } catch {
+    const result = await markAsReadAction(id);
+    if (result.error) {
       setNotifications(previous);
     }
   }

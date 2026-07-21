@@ -20,6 +20,13 @@ import {
   type ProfileStrengthItem,
 } from "@/lib/profile-strength";
 import { createClient } from "@/lib/supabase/server";
+import {
+  assertAvatarFile,
+  AVATARS_BUCKET,
+  buildAvatarStoragePath,
+  removeStorageObject,
+  uploadStorageObject,
+} from "@/lib/storage/queries";
 
 export type InfoGridItem = { label: string; value: string };
 
@@ -407,31 +414,45 @@ export async function getPlayerProfileForEdit() {
   return getCurrentPlayerProfile();
 }
 
+function avatarPathFromPublicUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const marker = `/object/public/${AVATARS_BUCKET}/`;
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+  return decodeURIComponent(
+    url.slice(index + marker.length).split("?")[0] ?? "",
+  );
+}
+
 async function uploadProfileImage(
-  userId: string,
+  playerId: string,
   file: File,
+  previousPublicUrl: string | null,
 ): Promise<string> {
-  const supabase = await createClient();
-  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const path = `${userId}/${Date.now()}.${extension}`;
+  assertAvatarFile(file);
 
-  const { error } = await supabase.storage
-    .from("player-avatars")
-    .upload(path, file, {
-      cacheControl: "3600",
-      upsert: true,
-      contentType: file.type || "image/jpeg",
-    });
+  const storagePath = buildAvatarStoragePath(playerId, file);
+  const uploaded = await uploadStorageObject({
+    bucket: AVATARS_BUCKET,
+    path: storagePath,
+    file,
+    upsert: true,
+  });
 
-  if (error) {
-    throw new Error(error.message);
+  const previousPath = avatarPathFromPublicUrl(previousPublicUrl);
+  if (previousPath && previousPath !== uploaded.storagePath) {
+    try {
+      await removeStorageObject(AVATARS_BUCKET, previousPath);
+    } catch {
+      // Best-effort cleanup when extension changes.
+    }
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("player-avatars").getPublicUrl(path);
+  if (!uploaded.publicUrl) {
+    throw new Error("Failed to resolve avatar public URL.");
+  }
 
-  return publicUrl;
+  return uploaded.publicUrl;
 }
 
 /**
@@ -459,25 +480,22 @@ export async function saveCurrentPlayerProfile(
       return { error: "Full name is required.", success: null };
     }
 
+    const playerId = await ensureCurrentPlayerId();
     let profileImageUrl = input.existingProfileImageUrl;
 
     if (input.profileImageFile && input.profileImageFile.size > 0) {
-      if (!input.profileImageFile.type.startsWith("image/")) {
-        return {
-          error: "Profile image must be an image file.",
-          success: null,
-        };
+      try {
+        profileImageUrl = await uploadProfileImage(
+          playerId,
+          input.profileImageFile,
+          input.existingProfileImageUrl,
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to upload image.";
+        return { error: message, success: null };
       }
-      if (input.profileImageFile.size > 5 * 1024 * 1024) {
-        return {
-          error: "Profile image must be 5MB or smaller.",
-          success: null,
-        };
-      }
-      profileImageUrl = await uploadProfileImage(user.id, input.profileImageFile);
     }
-
-    const playerId = await ensureCurrentPlayerId();
 
     const payload = {
       full_name: fullName,

@@ -3,8 +3,12 @@
 import {
   getCurrentCollegeId,
   isPlayerSaved,
+  listSavedPlayers,
   removeSavedPlayer,
   savePlayer,
+  toggleSavedPlayer,
+  type SavedPlayerRecord,
+  type SavedPlayersPageResult,
 } from "@/lib/saved-player-service";
 
 async function requireCollegeId(): Promise<string> {
@@ -19,26 +23,51 @@ async function requireCollegeId(): Promise<string> {
 export async function toggleSavedPlayerAction(
   playerId: string,
 ): Promise<boolean> {
-  const collegeId = await requireCollegeId();
-  const saved = await isPlayerSaved(collegeId, playerId);
-
-  if (saved) {
-    await removeSavedPlayer(collegeId, playerId);
-    return false;
+  if (!playerId?.trim()) {
+    throw new Error("Player id is required.");
   }
-
-  await savePlayer(collegeId, playerId);
-  return true;
+  const collegeId = await requireCollegeId();
+  return toggleSavedPlayer(collegeId, playerId.trim());
 }
 
 export async function removeSavedPlayerAction(
   playerId: string,
 ): Promise<void> {
+  if (!playerId?.trim()) {
+    throw new Error("Player id is required.");
+  }
   const collegeId = await requireCollegeId();
-  await removeSavedPlayer(collegeId, playerId);
+  await removeSavedPlayer(collegeId, playerId.trim());
 }
 
 export async function savePlayerAction(playerId: string): Promise<void> {
+  if (!playerId?.trim()) {
+    throw new Error("Player id is required.");
+  }
   const collegeId = await requireCollegeId();
-  await savePlayer(collegeId, playerId);
+  await savePlayer(collegeId, playerId.trim());
+}
+
+/** Whether the current college has saved this player. */
+export async function isPlayerSavedAction(
+  playerId: string,
+): Promise<boolean> {
+  if (!playerId?.trim()) return false;
+  const collegeId = await requireCollegeId();
+  return isPlayerSaved(collegeId, playerId.trim());
+}
+
+/** Paginated saved-player records for the current college. */
+export async function listSavedPlayersAction(input: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<SavedPlayersPageResult> {
+  const collegeId = await requireCollegeId();
+  return listSavedPlayers(collegeId, input);
+}
+
+/** Flat list of saved-player records for the current college. */
+export async function getSavedPlayersAction(): Promise<SavedPlayerRecord[]> {
+  const result = await listSavedPlayersAction();
+  return result.records;
 }

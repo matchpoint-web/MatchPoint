@@ -1,9 +1,10 @@
 /**
  * Player document types, definitions, and completion helpers.
- * Persistence lives in lib/player-documents-service.ts (Supabase).
+ * Persistence: lib/player-documents-service.ts + lib/storage/queries.ts.
  */
 
-export const PLAYER_DOCUMENTS_BUCKET = "player-documents";
+export const PLAYER_DOCUMENTS_BUCKET = "documents";
+export const PLAYER_AVATARS_BUCKET = "avatars";
 
 export type DocumentKind = "file" | "url";
 

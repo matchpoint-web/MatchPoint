@@ -1,15 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Json, Tables } from "@/lib/database.types";
 import { DOCUMENT_DEFINITIONS, toUiDocumentType } from "@/lib/player-documents";
 import {
   calculateProfileCompletion,
   countRemainingSections,
   type PlayerDashboardProfile,
 } from "@/lib/player-profile-service";
+import type { PlayerNotification } from "@/lib/player-notifications";
 import {
-  toUiNotificationType,
-  type PlayerNotification,
-} from "@/lib/player-notifications";
+  countUnreadNotifications,
+  mapNotificationRow,
+} from "@/lib/notifications-service";
+import { queryRecentNotifications } from "@/lib/notifications/queries";
 import { getCurrentPlayerProfile } from "@/lib/players/queries";
 import type { PlayerProfileRow } from "@/lib/players/types";
 
@@ -27,29 +28,13 @@ export type PlayerDashboardData = {
   recentActivity: PlayerDashboardActivityItem[];
 };
 
-type NotificationRow = Pick<
-  Tables<"notifications">,
-  "id" | "type" | "title" | "message" | "metadata" | "is_read" | "created_at"
->;
-
-function metadataToRecord(
-  metadata: Json | null,
-): Record<string, unknown> | null {
-  if (metadata == null) return null;
-  if (typeof metadata === "object" && !Array.isArray(metadata)) {
-    return metadata as Record<string, unknown>;
-  }
-  return null;
-}
-
 function formatNumber(
   value: number | string | null | undefined,
   digits = 1,
 ): string {
   if (value == null || value === "") return "—";
   const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(digits);
+  return Number.isFinite(n) ? n.toFixed(digits) : "—";
 }
 
 function toDashboardProfile(
@@ -80,59 +65,6 @@ function toDashboardProfile(
     remainingSections: countRemainingSections(row),
     profileImageUrl: row.profile_image_url,
   };
-}
-
-function mapNotification(row: NotificationRow): PlayerNotification {
-  return {
-    id: row.id,
-    type: toUiNotificationType(row.type),
-    title: row.title,
-    description: row.message,
-    createdAt: row.created_at,
-    unread: !row.is_read,
-    metadata: metadataToRecord(row.metadata),
-  };
-}
-
-async function countUnreadNotifications(
-  userId: string,
-  type?: string,
-): Promise<number> {
-  const supabase = await createClient();
-  let query = supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("is_read", false);
-
-  if (type) {
-    query = query.eq("type", type);
-  }
-
-  const { count, error } = await query;
-  if (error) {
-    throw new Error(error.message);
-  }
-  return count ?? 0;
-}
-
-async function getRecentNotifications(
-  userId: string,
-  limit: number,
-): Promise<PlayerNotification[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("id, type, title, message, metadata, is_read, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return ((data as NotificationRow[] | null) ?? []).map(mapNotification);
 }
 
 async function getRequiredDocumentsProgress(playerId: string): Promise<{
@@ -204,13 +136,13 @@ export async function getPlayerDashboardData(): Promise<PlayerDashboardData> {
     unreadMessages,
     unreadNotifications,
     savedByCollegesCount,
-    recentActivity,
+    recentRows,
   ] = await Promise.all([
     getRequiredDocumentsProgress(playerId),
     countUnreadNotifications(userId, "new_message"),
     countUnreadNotifications(userId),
     countSavedByColleges(playerId),
-    getRecentNotifications(userId, 5),
+    queryRecentNotifications(userId, 5),
   ]);
 
   return {
@@ -219,6 +151,6 @@ export async function getPlayerDashboardData(): Promise<PlayerDashboardData> {
     unreadMessages,
     unreadNotifications,
     savedByCollegesCount,
-    recentActivity,
+    recentActivity: recentRows.map(mapNotificationRow),
   };
 }

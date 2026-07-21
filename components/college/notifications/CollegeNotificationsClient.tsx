@@ -1,17 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   getNotificationHref,
   type PlayerNotification,
 } from "@/lib/player-notifications";
 import {
-  getNotifications,
-  markAllAsRead as markAllAsReadService,
-  markAsRead as markAsReadService,
-  subscribeToNotifications,
-} from "@/lib/notifications-service";
+  getNotificationsAction,
+  markAllAsReadAction,
+  markAsReadAction,
+} from "@/lib/notifications/actions";
 
 /**
  * College notifications list — same Supabase service + read/unread behavior
@@ -26,22 +25,12 @@ export function CollegeNotificationsClient() {
     [notifications],
   );
 
-  const upsertNotification = useCallback((notification: PlayerNotification) => {
-    setNotifications((prev) => {
-      const without = prev.filter((item) => item.id !== notification.id);
-      return [notification, ...without].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    });
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const next = await getNotifications();
+        const next = await getNotificationsAction();
         if (!cancelled) {
           setNotifications(next);
         }
@@ -62,13 +51,6 @@ export function CollegeNotificationsClient() {
     };
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = subscribeToNotifications((change) => {
-      upsertNotification(change.notification);
-    });
-    return unsubscribe;
-  }, [upsertNotification]);
-
   async function markAsRead(id: string) {
     const target = notifications.find((item) => item.id === id);
     if (!target?.unread) return;
@@ -80,9 +62,8 @@ export function CollegeNotificationsClient() {
       ),
     );
 
-    try {
-      await markAsReadService(id);
-    } catch {
+    const result = await markAsReadAction(id);
+    if (result.error) {
       setNotifications(previous);
     }
   }
@@ -95,9 +76,8 @@ export function CollegeNotificationsClient() {
       prev.map((item) => ({ ...item, unread: false })),
     );
 
-    try {
-      await markAllAsReadService();
-    } catch {
+    const result = await markAllAsReadAction();
+    if (result.error) {
       setNotifications(previous);
     }
   }
