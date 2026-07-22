@@ -30,34 +30,43 @@ export function AuthForm({ role, mode, action, next }: AuthFormProps) {
   const safeNext = sanitizeRedirectParam(next ?? null);
 
   const isPlayer = role === "player";
+  const isCollege = role === "college";
+  const isAdmin = role === "admin";
+
+  // Admin accounts are provisioned by the platform owner only — never signup.
+  const effectiveMode: AuthMode = isAdmin ? "login" : mode;
+
+  const portalLabel = isAdmin
+    ? "Admin Portal"
+    : isPlayer
+      ? "Player Portal"
+      : "College Portal";
+
   const title =
-    mode === "login"
-      ? isPlayer
-        ? "Player Login"
-        : "College Login"
+    effectiveMode === "login"
+      ? isAdmin
+        ? "Admin Login"
+        : isPlayer
+          ? "Player Login"
+          : "College Login"
       : isPlayer
         ? "Player Sign Up"
         : "College Sign Up";
 
   const subtitle =
-    mode === "login"
-      ? "Welcome back to MatchPoint."
+    effectiveMode === "login"
+      ? isAdmin
+        ? "MatchPoint operator access."
+        : "Welcome back to MatchPoint."
       : isPlayer
         ? "Create your player recruiting account."
-        : "Create your college recruiting account.";
-
-  const switchHref =
-    mode === "login" ? signupPathForRole(role) : loginPathForRole(role);
-  const switchLabel =
-    mode === "login"
-      ? "Need an account? Sign up"
-      : "Already have an account? Log in";
+        : "Create your college recruiting account. Approval is required before recruiting features unlock.";
 
   return (
     <div className="w-full max-w-md">
       <div className="mb-8 text-center">
         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-emerald-400/80">
-          {isPlayer ? "Player Portal" : "College Portal"}
+          {portalLabel}
         </p>
         <h1 className="text-3xl font-semibold tracking-tight text-white">
           {title}
@@ -70,7 +79,7 @@ export function AuthForm({ role, mode, action, next }: AuthFormProps) {
           <input type="hidden" name="next" value={safeNext} />
         ) : null}
 
-        {mode === "signup" && isPlayer ? (
+        {effectiveMode === "signup" && isPlayer ? (
           <div>
             <label
               htmlFor="full_name"
@@ -90,7 +99,7 @@ export function AuthForm({ role, mode, action, next }: AuthFormProps) {
           </div>
         ) : null}
 
-        {mode === "signup" && !isPlayer ? (
+        {effectiveMode === "signup" && isCollege ? (
           <div>
             <label
               htmlFor="school_name"
@@ -139,7 +148,7 @@ export function AuthForm({ role, mode, action, next }: AuthFormProps) {
             required
             minLength={6}
             autoComplete={
-              mode === "login" ? "current-password" : "new-password"
+              effectiveMode === "login" ? "current-password" : "new-password"
             }
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/30"
             placeholder="••••••••"
@@ -165,27 +174,41 @@ export function AuthForm({ role, mode, action, next }: AuthFormProps) {
         >
           {pending
             ? "Please wait…"
-            : mode === "login"
+            : effectiveMode === "login"
               ? "Log in"
               : "Create account"}
         </button>
       </form>
 
       <div className="mt-6 space-y-3 text-center text-sm">
-        <Link
-          href={switchHref}
-          className="block text-zinc-400 transition hover:text-white"
-        >
-          {switchLabel}
-        </Link>
-        <Link
-          href={
-            isPlayer ? "/auth/college/login" : "/auth/player/login"
-          }
-          className="block text-zinc-600 transition hover:text-zinc-400"
-        >
-          {isPlayer ? "College login instead" : "Player login instead"}
-        </Link>
+        {!isAdmin ? (
+          <>
+            <Link
+              href={
+                effectiveMode === "login"
+                  ? signupPathForRole(role === "college" ? "college" : "player")
+                  : loginPathForRole(role === "college" ? "college" : "player")
+              }
+              className="block text-zinc-400 transition hover:text-white"
+            >
+              {effectiveMode === "login"
+                ? "Need an account? Sign up"
+                : "Already have an account? Log in"}
+            </Link>
+            <Link
+              href={
+                isPlayer ? "/auth/college/login" : "/auth/player/login"
+              }
+              className="block text-zinc-600 transition hover:text-zinc-400"
+            >
+              {isPlayer ? "College login instead" : "Player login instead"}
+            </Link>
+          </>
+        ) : (
+          <p className="text-xs text-zinc-600">
+            Admin accounts are assigned by the platform owner only.
+          </p>
+        )}
         <Link
           href="/"
           className="block text-zinc-600 transition hover:text-zinc-400"

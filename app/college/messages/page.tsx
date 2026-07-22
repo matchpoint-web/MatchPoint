@@ -1,10 +1,12 @@
 import { MessagesClient } from "@/components/college/messages/MessagesClient";
+import { requireApprovedCollege } from "@/lib/college-access";
 
 type PageProps = {
   searchParams: Promise<{ c?: string }>;
 };
 
 export default async function CollegeMessagesPage({ searchParams }: PageProps) {
+  await requireApprovedCollege();
   const params = await searchParams;
   const conversationId =
     typeof params.c === "string" && params.c.trim() ? params.c.trim() : null;

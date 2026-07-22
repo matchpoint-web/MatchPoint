@@ -61,7 +61,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               Where Tennis Meets Opportunity.
             </p>
             <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-emerald-400/80">
-              {portal === "college" ? "College Portal" : "Player Portal"}
+              {portal === "admin"
+                ? "Admin Portal"
+                : portal === "college"
+                  ? "College Portal"
+                  : "Player Portal"}
             </p>
           </Link>
         </div>
@@ -114,12 +118,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <p className="truncate text-sm font-medium text-zinc-300">
                 {portal === "college"
                   ? collegeProfile.universityName
-                  : "Account"}
+                  : portal === "admin"
+                    ? "MatchPoint Ops"
+                    : "Account"}
               </p>
               <p className="truncate text-xs text-zinc-600">
                 {portal === "college"
                   ? collegeProfile.headCoach || "Head Coach"
-                  : "Player"}
+                  : portal === "admin"
+                    ? "Administrator"
+                    : "Player"}
               </p>
             </div>
           </div>

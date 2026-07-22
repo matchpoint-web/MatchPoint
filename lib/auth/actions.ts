@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AuthActionState, UserRole } from "@/lib/auth/types";
 import { homeForRole, loginPathForRole, getUserRole } from "@/lib/auth/utils";
+import {
+  isPlayerAccountSuspended,
+  SUSPENDED_ACCOUNT_PATH,
+} from "@/lib/auth/suspended";
 import { validateRedirect } from "@/lib/security/redirect";
 
 function getString(formData: FormData, key: string): string {
@@ -27,6 +31,11 @@ export async function signUp(
   _prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  // Admins are never created via application signup.
+  if (role === "admin") {
+    return { error: "Admin accounts cannot be created through signup." };
+  }
+
   const email = getString(formData, "email");
   const password = getString(formData, "password");
   const fullName = getString(formData, "full_name");
@@ -75,9 +84,9 @@ export async function signUp(
     }
 
     // Signup triggers provision players/colleges from app_metadata.role.
+    // Colleges are created as PENDING; players as ACTIVE.
 
     if (!autoConfirm) {
-      // Best-effort confirmation email (createUser does not always send one).
       const supabase = await createClient();
       await supabase.auth.resend({ type: "signup", email });
       return {
@@ -87,7 +96,6 @@ export async function signUp(
       };
     }
 
-    // Establish a cookie session with the anon/server client (not service role).
     const supabase = await createClient();
     const { data: signedIn, error: signInError } =
       await supabase.auth.signInWithPassword({ email, password });
@@ -100,7 +108,6 @@ export async function signUp(
       };
     }
 
-    // Defense in depth: JWT must carry the immutable role we just set.
     const sessionRole = getUserRole(signedIn.user);
     if (sessionRole !== role) {
       await supabase.auth.signOut();
@@ -115,7 +122,6 @@ export async function signUp(
     return { error: message };
   }
 
-  // redirect() must stay outside try/catch — it throws a Next.js control flow signal.
   redirect(homeForRole(role));
 }
 
@@ -159,6 +165,14 @@ export async function signIn(
     };
   }
 
+  // Suspended players keep their session and land on a dedicated screen.
+  if (userRole === "player") {
+    const suspended = await isPlayerAccountSuspended(data.user.id);
+    if (suspended) {
+      redirect(SUSPENDED_ACCOUNT_PATH);
+    }
+  }
+
   const home = homeForRole(role);
   redirect(validateRedirect(next || null, home));
 }
@@ -179,16 +193,39 @@ export async function requireUser(role?: UserRole) {
     redirect(role ? loginPathForRole(role) : "/");
   }
 
+  const userRole = getUserRole(user);
+
   if (role) {
-    const userRole = getUserRole(user);
     if (userRole !== role) {
       redirect(
-        userRole === "college" || userRole === "player"
+        userRole === "college" ||
+          userRole === "player" ||
+          userRole === "admin"
           ? homeForRole(userRole)
           : loginPathForRole(role),
       );
     }
   }
 
+  // Mid-session suspension: keep session, block portal access.
+  if (userRole === "player") {
+    const suspended = await isPlayerAccountSuspended(user.id);
+    if (suspended) {
+      redirect(SUSPENDED_ACCOUNT_PATH);
+    }
+  }
+
   return user;
+}
+
+export async function requirePlayer() {
+  return requireUser("player");
+}
+
+export async function requireCollege() {
+  return requireUser("college");
+}
+
+export async function requireAdmin() {
+  return requireUser("admin");
 }

@@ -1,558 +1,670 @@
-/**
- * Supabase Database types for the MatchPoint public schema.
- *
- * Generated from project migrations under supabase/migrations/
- * (remote `supabase gen types` requires SUPABASE_ACCESS_TOKEN / Docker).
- *
- * Regenerate when the remote schema is available:
- *   npm run db:types
- */
 export type Json =
   | string
   | number
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       coach_notes: {
         Row: {
-          id: string;
-          college_id: string;
-          player_id: string;
-          status: string;
-          notes: string;
-          created_at: string;
-          updated_at: string;
-        };
+          college_id: string
+          created_at: string
+          id: string
+          notes: string
+          player_id: string
+          status: string
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          college_id: string;
-          player_id: string;
-          status: string;
-          notes?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          college_id: string
+          created_at?: string
+          id?: string
+          notes?: string
+          player_id: string
+          status: string
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          college_id?: string;
-          player_id?: string;
-          status?: string;
-          notes?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          college_id?: string
+          created_at?: string
+          id?: string
+          notes?: string
+          player_id?: string
+          status?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "coach_notes_college_id_fkey";
-            columns: ["college_id"];
-            isOneToOne: false;
-            referencedRelation: "colleges";
-            referencedColumns: ["id"];
+            foreignKeyName: "coach_notes_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "coach_notes_player_id_fkey";
-            columns: ["player_id"];
-            isOneToOne: false;
-            referencedRelation: "players";
-            referencedColumns: ["id"];
+            foreignKeyName: "coach_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       colleges: {
         Row: {
-          id: string;
-          user_id: string | null;
-          school_name: string;
-          division: string | null;
-          location: string | null;
-          conference: string | null;
-          state: string | null;
-          city: string | null;
-          website: string | null;
-          head_coach: string | null;
-          assistant_coach: string | null;
-          contact_email: string | null;
-          about_program: string | null;
-          facilities: string | null;
-          recruiting_information: string | null;
-          logo_url: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          about_program: string | null
+          account_status: string
+          assistant_coach: string | null
+          city: string | null
+          conference: string | null
+          contact_email: string | null
+          created_at: string
+          division: string | null
+          facilities: string | null
+          head_coach: string | null
+          id: string
+          location: string | null
+          logo_url: string | null
+          recruiting_information: string | null
+          school_name: string
+          state: string | null
+          suspended_at: string | null
+          suspended_by: string | null
+          suspended_reason:
+            | Database["public"]["Enums"]["suspended_reason"]
+            | null
+          updated_at: string
+          user_id: string | null
+          website: string | null
+        }
         Insert: {
-          id?: string;
-          user_id?: string | null;
-          school_name: string;
-          division?: string | null;
-          location?: string | null;
-          conference?: string | null;
-          state?: string | null;
-          city?: string | null;
-          website?: string | null;
-          head_coach?: string | null;
-          assistant_coach?: string | null;
-          contact_email?: string | null;
-          about_program?: string | null;
-          facilities?: string | null;
-          recruiting_information?: string | null;
-          logo_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          about_program?: string | null
+          account_status?: string
+          assistant_coach?: string | null
+          city?: string | null
+          conference?: string | null
+          contact_email?: string | null
+          created_at?: string
+          division?: string | null
+          facilities?: string | null
+          head_coach?: string | null
+          id?: string
+          location?: string | null
+          logo_url?: string | null
+          recruiting_information?: string | null
+          school_name: string
+          state?: string | null
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?:
+            | Database["public"]["Enums"]["suspended_reason"]
+            | null
+          updated_at?: string
+          user_id?: string | null
+          website?: string | null
+        }
         Update: {
-          id?: string;
-          user_id?: string | null;
-          school_name?: string;
-          division?: string | null;
-          location?: string | null;
-          conference?: string | null;
-          state?: string | null;
-          city?: string | null;
-          website?: string | null;
-          head_coach?: string | null;
-          assistant_coach?: string | null;
-          contact_email?: string | null;
-          about_program?: string | null;
-          facilities?: string | null;
-          recruiting_information?: string | null;
-          logo_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "colleges_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: true;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+          about_program?: string | null
+          account_status?: string
+          assistant_coach?: string | null
+          city?: string | null
+          conference?: string | null
+          contact_email?: string | null
+          created_at?: string
+          division?: string | null
+          facilities?: string | null
+          head_coach?: string | null
+          id?: string
+          location?: string | null
+          logo_url?: string | null
+          recruiting_information?: string | null
+          school_name?: string
+          state?: string | null
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?:
+            | Database["public"]["Enums"]["suspended_reason"]
+            | null
+          updated_at?: string
+          user_id?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
-          id: string;
-          player_id: string;
-          college_id: string;
-          created_at: string;
-          updated_at: string;
-        };
+          college_id: string
+          created_at: string
+          id: string
+          player_id: string
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          player_id: string;
-          college_id: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          college_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          player_id?: string;
-          college_id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          college_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "conversations_player_id_fkey";
-            columns: ["player_id"];
-            isOneToOne: false;
-            referencedRelation: "players";
-            referencedColumns: ["id"];
+            foreignKeyName: "conversations_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "conversations_college_id_fkey";
-            columns: ["college_id"];
-            isOneToOne: false;
-            referencedRelation: "colleges";
-            referencedColumns: ["id"];
+            foreignKeyName: "conversations_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       messages: {
         Row: {
-          id: string;
-          conversation_id: string;
-          sender_user_id: string;
-          sender_role: string;
-          message: string;
-          created_at: string;
-        };
+          conversation_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_role: string
+          sender_user_id: string
+        }
         Insert: {
-          id?: string;
-          conversation_id: string;
-          sender_user_id: string;
-          sender_role: string;
-          message: string;
-          created_at?: string;
-        };
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_role: string
+          sender_user_id: string
+        }
         Update: {
-          id?: string;
-          conversation_id?: string;
-          sender_user_id?: string;
-          sender_role?: string;
-          message?: string;
-          created_at?: string;
-        };
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_role?: string
+          sender_user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "messages_conversation_id_fkey";
-            columns: ["conversation_id"];
-            isOneToOne: false;
-            referencedRelation: "conversations";
-            referencedColumns: ["id"];
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       notifications: {
         Row: {
-          id: string;
-          user_id: string;
-          type: string;
-          title: string;
-          message: string;
-          metadata: Json | null;
-          is_read: boolean;
-          created_at: string;
-        };
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          type: string;
-          title: string;
-          message: string;
-          metadata?: Json | null;
-          is_read?: boolean;
-          created_at?: string;
-        };
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          type?: string;
-          title?: string;
-          message?: string;
-          metadata?: Json | null;
-          is_read?: boolean;
-          created_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "notifications_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_documents: {
         Row: {
-          id: string;
-          player_id: string;
-          document_type: string;
-          file_name: string | null;
-          storage_path: string | null;
-          public_url: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          created_at: string
+          document_type: string
+          file_name: string | null
+          id: string
+          player_id: string
+          public_url: string | null
+          storage_path: string | null
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          player_id: string;
-          document_type: string;
-          file_name?: string | null;
-          storage_path?: string | null;
-          public_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          document_type: string
+          file_name?: string | null
+          id?: string
+          player_id: string
+          public_url?: string | null
+          storage_path?: string | null
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          player_id?: string;
-          document_type?: string;
-          file_name?: string | null;
-          storage_path?: string | null;
-          public_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          document_type?: string
+          file_name?: string | null
+          id?: string
+          player_id?: string
+          public_url?: string | null
+          storage_path?: string | null
+          updated_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "player_documents_player_id_fkey";
-            columns: ["player_id"];
-            isOneToOne: false;
-            referencedRelation: "players";
-            referencedColumns: ["id"];
+            foreignKeyName: "player_documents_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       players: {
         Row: {
-          id: string;
-          user_id: string | null;
-          full_name: string;
-          nationality: string | null;
-          graduation_year: number | null;
-          utr: number | null;
-          gpa: number | null;
-          height: number | null;
-          weight: number | null;
-          dominant_hand: string | null;
-          backhand: string | null;
-          date_of_birth: string | null;
-          bio: string | null;
-          profile_image_url: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          account_status: string
+          backhand: string | null
+          bio: string | null
+          created_at: string
+          date_of_birth: string | null
+          dominant_hand: string | null
+          full_name: string
+          gpa: number | null
+          graduation_year: number | null
+          height: number | null
+          id: string
+          nationality: string | null
+          profile_image_url: string | null
+          suspended_at: string | null
+          suspended_by: string | null
+          suspended_reason:
+            | Database["public"]["Enums"]["suspended_reason"]
+            | null
+          updated_at: string
+          user_id: string | null
+          utr: number | null
+          weight: number | null
+        }
         Insert: {
-          id?: string;
-          user_id?: string | null;
-          full_name: string;
-          nationality?: string | null;
-          graduation_year?: number | null;
-          utr?: number | null;
-          gpa?: number | null;
-          height?: number | null;
-          weight?: number | null;
-          dominant_hand?: string | null;
-          backhand?: string | null;
-          date_of_birth?: string | null;
-          bio?: string | null;
-          profile_image_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          account_status?: string
+          backhand?: string | null
+          bio?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          dominant_hand?: string | null
+          full_name: string
+          gpa?: number | null
+          graduation_year?: number | null
+          height?: number | null
+          id?: string
+          nationality?: string | null
+          profile_image_url?: string | null
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?:
+            | Database["public"]["Enums"]["suspended_reason"]
+            | null
+          updated_at?: string
+          user_id?: string | null
+          utr?: number | null
+          weight?: number | null
+        }
         Update: {
-          id?: string;
-          user_id?: string | null;
-          full_name?: string;
-          nationality?: string | null;
-          graduation_year?: number | null;
-          utr?: number | null;
-          gpa?: number | null;
-          height?: number | null;
-          weight?: number | null;
-          dominant_hand?: string | null;
-          backhand?: string | null;
-          date_of_birth?: string | null;
-          bio?: string | null;
-          profile_image_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "players_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: true;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+          account_status?: string
+          backhand?: string | null
+          bio?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          dominant_hand?: string | null
+          full_name?: string
+          gpa?: number | null
+          graduation_year?: number | null
+          height?: number | null
+          id?: string
+          nationality?: string | null
+          profile_image_url?: string | null
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspended_reason?:
+            | Database["public"]["Enums"]["suspended_reason"]
+            | null
+          updated_at?: string
+          user_id?: string | null
+          utr?: number | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
       recently_viewed_players: {
         Row: {
-          id: string;
-          college_id: string;
-          player_id: string;
-          viewed_at: string;
-          created_at: string;
-        };
+          college_id: string
+          created_at: string
+          id: string
+          player_id: string
+          viewed_at: string
+        }
         Insert: {
-          id?: string;
-          college_id: string;
-          player_id: string;
-          viewed_at?: string;
-          created_at?: string;
-        };
+          college_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+          viewed_at?: string
+        }
         Update: {
-          id?: string;
-          college_id?: string;
-          player_id?: string;
-          viewed_at?: string;
-          created_at?: string;
-        };
+          college_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          viewed_at?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "recently_viewed_players_college_id_fkey";
-            columns: ["college_id"];
-            isOneToOne: false;
-            referencedRelation: "colleges";
-            referencedColumns: ["id"];
+            foreignKeyName: "recently_viewed_players_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "recently_viewed_players_player_id_fkey";
-            columns: ["player_id"];
-            isOneToOne: false;
-            referencedRelation: "players";
-            referencedColumns: ["id"];
+            foreignKeyName: "recently_viewed_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
           },
-        ];
-      };
+        ]
+      }
       saved_players: {
         Row: {
-          id: string;
-          college_id: string;
-          player_id: string;
-          created_at: string;
-        };
+          college_id: string
+          created_at: string
+          id: string
+          player_id: string
+        }
         Insert: {
-          id?: string;
-          college_id: string;
-          player_id: string;
-          created_at?: string;
-        };
+          college_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+        }
         Update: {
-          id?: string;
-          college_id?: string;
-          player_id?: string;
-          created_at?: string;
-        };
+          college_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "saved_players_college_id_fkey";
-            columns: ["college_id"];
-            isOneToOne: false;
-            referencedRelation: "colleges";
-            referencedColumns: ["id"];
+            foreignKeyName: "saved_players_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "saved_players_player_id_fkey";
-            columns: ["player_id"];
-            isOneToOne: false;
-            referencedRelation: "players";
-            referencedColumns: ["id"];
+            foreignKeyName: "saved_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-    };
+        ]
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
+      auth_role_from_user_row: {
+        Args: { app_meta: Json; user_meta: Json }
+        Returns: string
+      }
       can_create_notification_for: {
-        Args: {
-          target_user_id: string;
-          notification_type: string;
-        };
-        Returns: boolean;
-      };
+        Args: { notification_type: string; target_user_id: string }
+        Returns: boolean
+      }
       create_notification: {
         Args: {
-          target_user_id: string;
-          notification_type: string;
-          notification_title: string;
-          notification_message: string;
-          notification_metadata?: Json | null;
-        };
-        Returns: Database["public"]["Tables"]["notifications"]["Row"];
-      };
-      jwt_app_role: {
-        Args: Record<string, never>;
-        Returns: string;
-      };
-      is_player_account: {
-        Args: Record<string, never>;
-        Returns: boolean;
-      };
-      is_college_account: {
-        Args: Record<string, never>;
-        Returns: boolean;
-      };
+          notification_message: string
+          notification_metadata?: Json
+          notification_title: string
+          notification_type: string
+          target_user_id: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "notifications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      current_player_id: { Args: never; Returns: string }
+      ensure_college_profile: { Args: never; Returns: string }
+      ensure_player_profile: { Args: never; Returns: string }
+      is_active_player_account: { Args: never; Returns: boolean }
+      is_admin_account: { Args: never; Returns: boolean }
+      is_approved_college_account: { Args: never; Returns: boolean }
+      is_college_account: { Args: never; Returns: boolean }
+      is_conversation_participant: {
+        Args: { target_conversation_id: string }
+        Returns: boolean
+      }
+      is_player_account: { Args: never; Returns: boolean }
+      jwt_app_role: { Args: never; Returns: string }
       player_participates_in_college_conversation: {
-        Args: {
-          target_college_id: string;
-        };
-        Returns: boolean;
-      };
-      ensure_player_profile: {
-        Args: Record<string, never>;
-        Returns: string;
-      };
-      ensure_college_profile: {
-        Args: Record<string, never>;
-        Returns: string;
-      };
-    };
+        Args: { target_college_id: string }
+        Returns: boolean
+      }
+    }
     Enums: {
-      [_ in never]: never;
-    };
+      suspended_reason:
+        | "SPAM"
+        | "FAKE_ACCOUNT"
+        | "FAKE_UNIVERSITY"
+        | "ABUSE"
+        | "TERMS_VIOLATION"
+        | "OTHER"
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-type PublicSchema = Database[Extract<keyof Database, "public">];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-        Row: infer R;
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
       }
       ? R
       : never
-    : never;
+    : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Insert: infer I;
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
       }
       ? I
       : never
-    : never;
+    : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Update: infer U;
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
       }
       ? U
       : never
-    : never;
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      suspended_reason: [
+        "SPAM",
+        "FAKE_ACCOUNT",
+        "FAKE_UNIVERSITY",
+        "ABUSE",
+        "TERMS_VIOLATION",
+        "OTHER",
+      ],
+    },
+  },
+} as const

@@ -102,6 +102,7 @@ export async function getCurrentCollegeId(): Promise<string | null> {
     .insert({
       user_id: user.id,
       school_name: schoolName,
+      account_status: "PENDING",
     })
     .select("id")
     .single();

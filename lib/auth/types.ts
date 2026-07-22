@@ -1,4 +1,4 @@
-export type UserRole = "player" | "college";
+export type UserRole = "player" | "college" | "admin";
 
 export type AuthActionState = {
   error: string | null;

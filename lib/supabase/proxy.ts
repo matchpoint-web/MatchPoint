@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
 import { getUserRole, homeForRole } from "@/lib/auth/utils";
+import { SUSPENDED_ACCOUNT_PATH } from "@/lib/auth/suspended";
 import { validateRedirect } from "@/lib/security/redirect";
 
 export async function updateSession(request: NextRequest) {
@@ -43,21 +44,45 @@ export async function updateSession(request: NextRequest) {
     pathname === "/player" || pathname.startsWith("/player/");
   const isCollegeRoute =
     pathname === "/college" || pathname.startsWith("/college/");
+  const isAdminRoute =
+    pathname === "/admin" || pathname.startsWith("/admin/");
+  const isAccountRoute =
+    pathname === "/account" || pathname.startsWith("/account/");
+  const isSuspendedRoute = pathname === SUSPENDED_ACCOUNT_PATH;
   const isAuthRoute = pathname.startsWith("/auth/");
 
-  if ((isPlayerRoute || isCollegeRoute) && !user) {
+  if (
+    (isPlayerRoute || isCollegeRoute || isAdminRoute || isAccountRoute) &&
+    !user
+  ) {
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = isCollegeRoute
-      ? "/auth/college/login"
-      : "/auth/player/login";
+    loginUrl.pathname = isAdminRoute
+      ? "/auth/admin/login"
+      : isCollegeRoute
+        ? "/auth/college/login"
+        : "/auth/player/login";
     loginUrl.search = "";
-    const fallback = isCollegeRoute ? "/college/dashboard" : "/player";
+    const fallback = isAdminRoute
+      ? "/admin/dashboard"
+      : isCollegeRoute
+        ? "/college/dashboard"
+        : isAccountRoute
+          ? SUSPENDED_ACCOUNT_PATH
+          : "/player";
     const returnTo = validateRedirect(
       `${pathname}${request.nextUrl.search}`,
       fallback,
     );
     loginUrl.searchParams.set("next", returnTo);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Suspended screen is player-only; other roles go to their portal home.
+  if (isSuspendedRoute && user && role !== "player") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = role ? homeForRole(role) : "/";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (isPlayerRoute && user && role !== "player") {
@@ -74,8 +99,30 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  if (isAdminRoute && user && role !== "admin") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = role ? homeForRole(role) : "/auth/admin/login";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
   if (isAuthRoute && user && role && pathname !== "/auth/callback") {
     const redirectUrl = request.nextUrl.clone();
+    // Suspended players are sent to the dedicated screen after any auth page hit.
+    if (role === "player") {
+      const { data } = await supabase
+        .from("players")
+        .select("account_status")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (data?.account_status === "SUSPENDED") {
+        redirectUrl.pathname = SUSPENDED_ACCOUNT_PATH;
+        redirectUrl.search = "";
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+
     redirectUrl.pathname = homeForRole(role);
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);

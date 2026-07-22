@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { PlayerSearchClient } from "@/components/college/players/PlayerSearchClient";
 import { PlayerSearchSkeleton } from "@/components/college/players/PlayerSearchSkeleton";
+import { requireApprovedCollege } from "@/lib/college-access";
 import { searchPlayers } from "@/lib/player-search-service";
 import { PLAYERS_PER_PAGE } from "@/lib/players";
 import {
@@ -9,6 +10,8 @@ import {
 } from "@/lib/saved-player-service";
 
 async function PlayerSearchLoader() {
+  await requireApprovedCollege();
+
   try {
     const [initialResult, collegeId] = await Promise.all([
       searchPlayers(),

@@ -1,5 +1,10 @@
 import { type ReactNode } from "react";
 import {
+  adminNavItems,
+  getAdminPageTitle,
+  isAdminNavItemActive,
+} from "./admin-nav-config";
+import {
   collegeNavItems,
   getCollegePageTitle,
   isCollegeNavItemActive,
@@ -11,7 +16,7 @@ export type NavItemConfig = {
   icon: ReactNode;
 };
 
-export type PortalType = "player" | "college";
+export type PortalType = "player" | "college" | "admin";
 
 /** Player MVP: only routes that exist today. */
 export const navItems: NavItemConfig[] = [
@@ -63,25 +68,38 @@ export const navItems: NavItemConfig[] = [
 ];
 
 export function getPortal(pathname: string): PortalType {
-  return pathname.startsWith("/college") ? "college" : "player";
+  if (pathname.startsWith("/admin")) return "admin";
+  if (pathname.startsWith("/college")) return "college";
+  return "player";
 }
 
 export function getNavItems(pathname: string): NavItemConfig[] {
-  return getPortal(pathname) === "college" ? collegeNavItems : navItems;
+  const portal = getPortal(pathname);
+  if (portal === "admin") return adminNavItems;
+  if (portal === "college") return collegeNavItems;
+  return navItems;
 }
 
 export function getHomeHref(pathname: string): string {
-  return getPortal(pathname) === "college" ? "/college/dashboard" : "/player";
+  const portal = getPortal(pathname);
+  if (portal === "admin") return "/admin/dashboard";
+  if (portal === "college") return "/college/dashboard";
+  return "/player";
 }
 
-export function getProfileHref(pathname: string): string {
-  return getPortal(pathname) === "college"
-    ? "/college/settings"
-    : "/player/profile";
+export function getProfileHref(pathname: string): string | null {
+  const portal = getPortal(pathname);
+  if (portal === "admin") return null;
+  if (portal === "college") return "/college/settings";
+  return "/player/profile";
 }
 
 export function getPageTitle(pathname: string): string {
-  if (getPortal(pathname) === "college") {
+  const portal = getPortal(pathname);
+  if (portal === "admin") {
+    return getAdminPageTitle(pathname);
+  }
+  if (portal === "college") {
     return getCollegePageTitle(pathname);
   }
 
@@ -102,7 +120,11 @@ export function getPageTitle(pathname: string): string {
 }
 
 export function isNavItemActive(pathname: string, href: string): boolean {
-  if (getPortal(pathname) === "college") {
+  const portal = getPortal(pathname);
+  if (portal === "admin") {
+    return isAdminNavItemActive(pathname, href);
+  }
+  if (portal === "college") {
     return isCollegeNavItemActive(pathname, href);
   }
 

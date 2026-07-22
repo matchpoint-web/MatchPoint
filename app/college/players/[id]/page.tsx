@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CollegePlayerDocuments } from "@/components/college/players/profile/CollegePlayerDocuments";
 import { CollegeProfileView } from "@/components/college/players/profile/CollegeProfileView";
 import { GlassCard } from "@/components/player/GlassCard";
+import { requireApprovedCollege } from "@/lib/college-access";
 import { getPlayerDocumentsForCollege } from "@/lib/college-player-documents-service";
 import { getCoachNote } from "@/lib/coach-notes-service";
 import { getCollegePlayerProfile } from "@/lib/college-player-profile-service";
@@ -49,6 +50,7 @@ function DocumentsLoading() {
 }
 
 export default async function CollegePlayerProfilePage({ params }: PageProps) {
+  await requireApprovedCollege();
   const { id } = await params;
 
   let profile;

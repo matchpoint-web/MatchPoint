@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { PlayerSearchSkeleton } from "@/components/college/players/PlayerSearchSkeleton";
 import { SavedPlayersClient } from "@/components/college/players/SavedPlayersClient";
+import { requireApprovedCollege } from "@/lib/college-access";
 import { getPlayersByIds } from "@/lib/player-service";
 import {
   getCurrentCollegeId,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/saved-player-service";
 
 async function SavedPlayersLoader() {
+  await requireApprovedCollege();
   try {
     const collegeId = await getCurrentCollegeId();
     const saved = collegeId ? await getSavedPlayers(collegeId) : [];

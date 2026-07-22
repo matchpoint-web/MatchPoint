@@ -11,6 +11,10 @@ export const config = {
     "/player/:path*",
     "/college",
     "/college/:path*",
+    "/admin",
+    "/admin/:path*",
+    "/account",
+    "/account/:path*",
     "/auth/:path*",
   ],
 };
