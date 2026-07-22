@@ -20,6 +20,14 @@ type CollegeProfileViewProps = {
   documentsSlot?: ReactNode;
 };
 
+function formatOptionalNumber(
+  value: number | null,
+  digits?: number,
+): string | null {
+  if (value == null) return null;
+  return digits != null ? value.toFixed(digits) : String(value);
+}
+
 export function CollegeProfileView({
   profile,
   collegeId,
@@ -70,15 +78,51 @@ export function CollegeProfileView({
     }
   }
 
-  const details = [
-    { label: "Country", value: `${profile.country} ${profile.countryFlag}` },
-    { label: "Graduation Year", value: profile.graduationYear },
-    { label: "UTR", value: profile.utr.toFixed(1) },
-    { label: "GPA", value: profile.gpa.toFixed(1) },
-    { label: "Height", value: `${profile.height} cm` },
-    { label: "Dominant Hand", value: profile.tennis.dominantHand },
-    { label: "Backhand", value: profile.tennis.backhand },
+  const detailFields: { label: string; value: string | null }[] = [
+    {
+      label: "Country",
+      value: profile.country
+        ? `${profile.country}${profile.countryFlag ? ` ${profile.countryFlag}` : ""}`
+        : null,
+    },
+    {
+      label: "Graduation Year",
+      value: profile.graduationYear || null,
+    },
+    {
+      label: "Age",
+      value: profile.age != null ? String(profile.age) : null,
+    },
+    {
+      label: "UTR",
+      value: formatOptionalNumber(profile.utr, 1),
+    },
+    {
+      label: "GPA",
+      value: formatOptionalNumber(profile.gpa, 1),
+    },
+    {
+      label: "Height",
+      value:
+        profile.height != null ? `${formatOptionalNumber(profile.height)} cm` : null,
+    },
+    {
+      label: "Weight",
+      value:
+        profile.weight != null ? `${formatOptionalNumber(profile.weight)} kg` : null,
+    },
+    {
+      label: "Dominant Hand",
+      value: profile.dominantHand,
+    },
+    {
+      label: "Backhand",
+      value: profile.backhand,
+    },
   ];
+
+  const filledDetails = detailFields.filter((f) => Boolean(f.value));
+  const hasAbout = Boolean(profile.about?.trim());
 
   return (
     <div className="overflow-x-hidden text-white">
@@ -110,7 +154,11 @@ export function CollegeProfileView({
               <div className="mx-auto shrink-0 sm:mx-0">
                 <div
                   className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-2 border-emerald-500/30 bg-gradient-to-br from-zinc-800 to-zinc-900 text-3xl font-bold text-emerald-400/80 shadow-xl shadow-emerald-500/10 sm:h-44 sm:w-44 sm:text-4xl"
-                  aria-label={`${profile.name} profile photo`}
+                  aria-label={
+                    profile.profileImageUrl
+                      ? `${profile.name} profile photo`
+                      : `${profile.name} — no profile photo`
+                  }
                 >
                   {profile.profileImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -119,8 +167,12 @@ export function CollegeProfileView({
                       alt=""
                       className="h-full w-full object-cover"
                     />
+                  ) : profile.initials ? (
+                    <span aria-hidden>{profile.initials}</span>
                   ) : (
-                    profile.initials
+                    <span className="text-sm font-medium text-zinc-500">
+                      No photo
+                    </span>
                   )}
                 </div>
               </div>
@@ -133,21 +185,29 @@ export function CollegeProfileView({
                   {profile.name}
                 </h1>
 
-                <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {details.map((item) => (
-                    <div
-                      key={item.label}
-                      className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3"
-                    >
-                      <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:text-xs">
-                        {item.label}
-                      </p>
-                      <p className="text-sm font-semibold text-white">
-                        {item.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {filledDetails.length > 0 ? (
+                  <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {filledDetails.map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3"
+                      >
+                        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500 sm:text-xs">
+                          {item.label}
+                        </p>
+                        <p className="text-sm font-semibold text-white">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mb-8 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-5 text-left">
+                    <p className="text-sm text-zinc-500">
+                      This player has not added profile details yet.
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <button
@@ -183,11 +243,15 @@ export function CollegeProfileView({
           <section>
             <SectionTitle title="Biography" />
             <GlassCard className="p-6 sm:p-8">
-              <p className="text-base leading-relaxed text-zinc-300 sm:text-lg">
-                {profile.about?.trim()
-                  ? profile.about
-                  : "No biography provided yet."}
-              </p>
+              {hasAbout ? (
+                <p className="text-base leading-relaxed text-zinc-300 sm:text-lg">
+                  {profile.about}
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  No biography provided yet.
+                </p>
+              )}
             </GlassCard>
           </section>
 

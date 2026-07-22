@@ -1,5 +1,4 @@
 import { getUserRole } from "@/lib/auth/utils";
-import type { PreferredDivision } from "@/lib/players";
 import type {
   ChatMessage,
   Conversation,
@@ -8,6 +7,11 @@ import type {
 } from "@/lib/college-messages";
 import { notifyNewMessage } from "@/lib/notifications-service";
 import { createClient } from "@/lib/supabase/server";
+import {
+  flagForCountry,
+  initialsFromName,
+  toOptionalNumber,
+} from "@/lib/players/mappers";
 import {
   CONVERSATIONS_PER_PAGE,
   insertConversation,
@@ -57,69 +61,6 @@ export type ListMessagesParams = {
   page?: number;
   pageSize?: number;
 };
-
-const COUNTRY_FLAGS: Record<string, string> = {
-  "United States": "🇺🇸",
-  Canada: "🇨🇦",
-  Mexico: "🇲🇽",
-  Brazil: "🇧🇷",
-  Argentina: "🇦🇷",
-  Chile: "🇨🇱",
-  Colombia: "🇨🇴",
-  Peru: "🇵🇪",
-  "United Kingdom": "🇬🇧",
-  France: "🇫🇷",
-  Germany: "🇩🇪",
-  Spain: "🇪🇸",
-  Italy: "🇮🇹",
-  Netherlands: "🇳🇱",
-  Belgium: "🇧🇪",
-  Sweden: "🇸🇪",
-  Norway: "🇳🇴",
-  Denmark: "🇩🇰",
-  Switzerland: "🇨🇭",
-  "Czech Republic": "🇨🇿",
-  Serbia: "🇷🇸",
-  Croatia: "🇭🇷",
-  Poland: "🇵🇱",
-  Austria: "🇦🇹",
-  Japan: "🇯🇵",
-  "South Korea": "🇰🇷",
-  China: "🇨🇳",
-  "Chinese Taipei": "🇹🇼",
-  "Hong Kong": "🇭🇰",
-  Thailand: "🇹🇭",
-  Malaysia: "🇲🇾",
-  Singapore: "🇸🇬",
-  Indonesia: "🇮🇩",
-  Philippines: "🇵🇭",
-  India: "🇮🇳",
-  Vietnam: "🇻🇳",
-  Australia: "🇦🇺",
-  "New Zealand": "🇳🇿",
-  "South Africa": "🇿🇦",
-  Morocco: "🇲🇦",
-  Egypt: "🇪🇬",
-  Ireland: "🇮🇪",
-};
-
-function toNumber(value: number | string | null | undefined, fallback = 0): number {
-  if (value == null || value === "") return fallback;
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function initialsFromName(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
-}
-
-function flagForCountry(country: string): string {
-  if (!country) return "";
-  return COUNTRY_FLAGS[country] ?? "";
-}
 
 function unwrapPlayer(
   players: ConversationRow["players"],
@@ -255,11 +196,10 @@ function buildConversationShell(
       initials: initialsFromName(name),
       country: location,
       countryFlag: "",
-      utr: 0,
-      gpa: 0,
-      graduationYear: college?.division?.trim() || "",
-      division: "NCAA D1" as PreferredDivision,
-      englishTest: "",
+      utr: null,
+      gpa: null,
+      graduationYear: "",
+      division: college?.division?.trim() || null,
       recruitingStatus: extras.recruitingStatus,
       lastMessage: extras.lastMessage,
       lastMessageAt: extras.lastMessageAt,
@@ -282,12 +222,11 @@ function buildConversationShell(
     initials: initialsFromName(name),
     country,
     countryFlag: flagForCountry(country),
-    utr: toNumber(player?.utr),
-    gpa: toNumber(player?.gpa),
+    utr: toOptionalNumber(player?.utr),
+    gpa: toOptionalNumber(player?.gpa),
     graduationYear:
       player?.graduation_year != null ? String(player.graduation_year) : "",
-    division: "NCAA D1" as PreferredDivision,
-    englishTest: "",
+    division: null,
     recruitingStatus: extras.recruitingStatus,
     lastMessage: extras.lastMessage,
     lastMessageAt: extras.lastMessageAt,

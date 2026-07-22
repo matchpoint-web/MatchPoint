@@ -26,16 +26,17 @@ export type Player = {
   country: string;
   countryFlag: string;
   graduationYear: string;
-  utr: number;
-  gpa: number;
-  division: PreferredDivision;
-  playingStyle: string;
-  major: string;
-  academicTest: AcademicTest;
-  height: number;
-  weight: number;
-  handedness: "Right" | "Left";
+  utr: number | null;
+  gpa: number | null;
+  height: number | null;
+  weight: number | null;
+  handedness: "Right" | "Left" | null;
+  backhand: string | null;
+  dateOfBirth: string | null;
+  about: string | null;
+  profileImageUrl: string | null;
   createdAt: string;
+  /** Derived from full_name for avatar fallback when no photo. */
   initials: string;
 };
 

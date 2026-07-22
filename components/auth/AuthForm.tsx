@@ -8,6 +8,7 @@ import {
   loginPathForRole,
   signupPathForRole,
 } from "@/lib/auth/utils";
+import { sanitizeRedirectParam } from "@/lib/security/redirect";
 
 type AuthMode = "login" | "signup";
 
@@ -18,7 +19,7 @@ type AuthFormProps = {
     prevState: AuthActionState,
     formData: FormData,
   ) => Promise<AuthActionState>;
-  next?: string;
+  next?: string | null;
 };
 
 export function AuthForm({ role, mode, action, next }: AuthFormProps) {
@@ -26,6 +27,7 @@ export function AuthForm({ role, mode, action, next }: AuthFormProps) {
     action,
     INITIAL_AUTH_STATE,
   );
+  const safeNext = sanitizeRedirectParam(next ?? null);
 
   const isPlayer = role === "player";
   const title =
@@ -64,7 +66,9 @@ export function AuthForm({ role, mode, action, next }: AuthFormProps) {
       </div>
 
       <form action={formAction} className="space-y-4">
-        {next ? <input type="hidden" name="next" value={next} /> : null}
+        {safeNext ? (
+          <input type="hidden" name="next" value={safeNext} />
+        ) : null}
 
         {mode === "signup" && isPlayer ? (
           <div>

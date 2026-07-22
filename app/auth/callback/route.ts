@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUserRole, homeForRole } from "@/lib/auth/utils";
+import { validateRedirect } from "@/lib/security/redirect";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -13,15 +14,11 @@ export async function GET(request: Request) {
 
     if (!error) {
       const role = getUserRole(data.user);
-      const destination =
-        next && next.startsWith("/")
-          ? next
-          : role
-            ? homeForRole(role)
-            : "/";
-      return NextResponse.redirect(`${origin}${destination}`);
+      const fallback = role ? homeForRole(role) : "/";
+      const destination = validateRedirect(next, fallback);
+      return NextResponse.redirect(new URL(destination, origin));
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth/player/login`);
+  return NextResponse.redirect(new URL("/auth/player/login", origin));
 }

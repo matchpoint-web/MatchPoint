@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AuthActionState, UserRole } from "@/lib/auth/types";
 import { homeForRole, loginPathForRole, getUserRole } from "@/lib/auth/utils";
+import { validateRedirect } from "@/lib/security/redirect";
 
 function getString(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -158,11 +159,8 @@ export async function signIn(
     };
   }
 
-  if (next && next.startsWith("/")) {
-    redirect(next);
-  }
-
-  redirect(homeForRole(role));
+  const home = homeForRole(role);
+  redirect(validateRedirect(next || null, home));
 }
 
 export async function signOut(): Promise<void> {

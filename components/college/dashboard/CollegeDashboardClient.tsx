@@ -211,7 +211,7 @@ export function CollegeDashboardClient({
                         UTR
                       </p>
                       <p className="text-sm font-semibold text-white">
-                        {player.utr.toFixed(1)}
+                        {player.utr != null ? player.utr.toFixed(1) : "N/A"}
                       </p>
                     </div>
                   </Link>
@@ -270,7 +270,7 @@ export function CollegeDashboardClient({
                         UTR
                       </p>
                       <p className="text-sm font-semibold text-white">
-                        {player.utr.toFixed(1)}
+                        {player.utr != null ? player.utr.toFixed(1) : "N/A"}
                       </p>
                     </div>
                   </Link>

@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { getUserRole } from "@/lib/auth/utils";
 import type { PlayerProfileRow } from "@/lib/players/types";
+import {
+  PLAYER_SEARCH_SELECT,
+  type PlayerSearchRow,
+} from "@/lib/players/search-queries";
 
 export const PLAYER_PROFILE_SELECT =
   "id, user_id, full_name, nationality, graduation_year, utr, gpa, height, weight, dominant_hand, backhand, date_of_birth, bio, profile_image_url" as const;
@@ -94,4 +98,54 @@ export async function getCurrentPlayerProfile(): Promise<{
     userId: user.id,
     fallbackName,
   };
+}
+
+/**
+ * Load one authenticated player by id (college recruiting visibility).
+ * Reuses PLAYER_SEARCH_SELECT — do not duplicate column lists callerside.
+ */
+export async function queryAuthenticatedPlayerById(
+  playerId: string,
+): Promise<PlayerSearchRow | null> {
+  const trimmed = playerId.trim();
+  if (!trimmed) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("players")
+    .select(PLAYER_SEARCH_SELECT)
+    .eq("id", trimmed)
+    .not("user_id", "is", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as PlayerSearchRow | null) ?? null;
+}
+
+/**
+ * Load many authenticated players by id (saved list, dashboard, etc.).
+ */
+export async function queryAuthenticatedPlayersByIds(
+  ids: string[],
+): Promise<PlayerSearchRow[]> {
+  if (ids.length === 0) return [];
+
+  const uniqueIds = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("players")
+    .select(PLAYER_SEARCH_SELECT)
+    .in("id", uniqueIds)
+    .not("user_id", "is", null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as PlayerSearchRow[] | null) ?? [];
 }

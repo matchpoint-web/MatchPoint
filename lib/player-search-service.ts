@@ -5,10 +5,8 @@ import {
   type PlayerFilters,
   type SortOption,
 } from "@/lib/players";
-import {
-  mapPlayerSearchRowToPlayer,
-  type PlayerDetail,
-} from "@/lib/player-service";
+import { mapPlayerSearchRowToPlayer } from "@/lib/players/mappers";
+import type { PlayerDetail } from "@/lib/player-service";
 import {
   queryPlayersPage,
   type PlayerSearchQueryInput,

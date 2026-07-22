@@ -5,7 +5,7 @@ import { CollegeProfileView } from "@/components/college/players/profile/College
 import { GlassCard } from "@/components/player/GlassCard";
 import { getPlayerDocumentsForCollege } from "@/lib/college-player-documents-service";
 import { getCoachNote } from "@/lib/coach-notes-service";
-import { getPlayer } from "@/lib/player-service";
+import { getCollegePlayerProfile } from "@/lib/college-player-profile-service";
 import {
   getCurrentCollegeId,
   isPlayerSaved,
@@ -53,7 +53,7 @@ export default async function CollegePlayerProfilePage({ params }: PageProps) {
 
   let profile;
   try {
-    profile = await getPlayer(id);
+    profile = await getCollegePlayerProfile(id);
   } catch {
     notFound();
   }

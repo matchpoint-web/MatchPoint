@@ -1,5 +1,3 @@
-import type { PreferredDivision } from "./players";
-
 /** Display status on conversation list cards (mapped from coach notes). */
 export type RecruitingStatus =
   | "Interested"
@@ -33,11 +31,11 @@ export type Conversation = {
   initials: string;
   country: string;
   countryFlag: string;
-  utr: number;
-  gpa: number;
+  utr: number | null;
+  gpa: number | null;
   graduationYear: string;
-  division: PreferredDivision;
-  englishTest: string;
+  /** College division when viewing as a player; null when unknown. */
+  division: string | null;
   recruitingStatus: RecruitingStatus;
   lastMessage: string;
   lastMessageAt: string;
