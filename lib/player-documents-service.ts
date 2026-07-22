@@ -1,3 +1,4 @@
+import { requirePlayer } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
 import { ensureCurrentPlayerId } from "@/lib/players/queries";
 import {
@@ -27,15 +28,7 @@ async function requireCurrentPlayer(): Promise<{
   userId: string;
   playerId: string;
 }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-
+  const user = await requirePlayer();
   const playerId = await ensureCurrentPlayerId();
   return { userId: user.id, playerId };
 }

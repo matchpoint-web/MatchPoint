@@ -101,7 +101,7 @@ export async function getCurrentPlayerProfile(): Promise<{
 }
 
 /**
- * Load one authenticated player by id (college recruiting visibility).
+ * Load one authenticated, ACTIVE player by id (college recruiting visibility).
  * Reuses PLAYER_SEARCH_SELECT — do not duplicate column lists callerside.
  */
 export async function queryAuthenticatedPlayerById(
@@ -116,6 +116,7 @@ export async function queryAuthenticatedPlayerById(
     .select(PLAYER_SEARCH_SELECT)
     .eq("id", trimmed)
     .not("user_id", "is", null)
+    .eq("account_status", "ACTIVE")
     .maybeSingle();
 
   if (error) {
@@ -126,7 +127,7 @@ export async function queryAuthenticatedPlayerById(
 }
 
 /**
- * Load many authenticated players by id (saved list, dashboard, etc.).
+ * Load many authenticated, ACTIVE players by id (saved list, dashboard, etc.).
  */
 export async function queryAuthenticatedPlayersByIds(
   ids: string[],
@@ -141,7 +142,8 @@ export async function queryAuthenticatedPlayersByIds(
     .from("players")
     .select(PLAYER_SEARCH_SELECT)
     .in("id", uniqueIds)
-    .not("user_id", "is", null);
+    .not("user_id", "is", null)
+    .eq("account_status", "ACTIVE");
 
   if (error) {
     throw new Error(error.message);

@@ -91,27 +91,16 @@ export async function getCurrentCollegeId(): Promise<string | null> {
     return existing.id as string;
   }
 
-  const schoolName =
-    typeof user.user_metadata?.school_name === "string" &&
-    user.user_metadata.school_name.trim()
-      ? user.user_metadata.school_name.trim()
-      : "My College";
+  // Prefer SECURITY DEFINER ensure helper (PENDING + race-safe).
+  const { data: ensuredId, error: rpcError } = await supabase.rpc(
+    "ensure_college_profile",
+  );
 
-  const { data: created, error: insertError } = await supabase
-    .from("colleges")
-    .insert({
-      user_id: user.id,
-      school_name: schoolName,
-      account_status: "PENDING",
-    })
-    .select("id")
-    .single();
-
-  if (insertError) {
-    throw new Error(insertError.message);
+  if (rpcError) {
+    throw new Error(rpcError.message);
   }
 
-  return (created?.id as string) ?? null;
+  return (ensuredId as string | null) ?? null;
 }
 
 async function getCurrentCollegeRow(): Promise<{

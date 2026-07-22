@@ -26,16 +26,6 @@ export const DOCUMENT_MIME_TYPES = [
 
 const SIGNED_URL_SECONDS = 60 * 60;
 
-const LOG_PREFIX = "[storage]";
-
-/** Flat string logs — Next/Turbopack often collapses object args to `{}`. */
-function logStorageLine(step: string, details: Record<string, unknown>): void {
-  const parts = Object.entries(details).map(
-    ([key, value]) => `${key}=${JSON.stringify(value)}`,
-  );
-  console.log(`${LOG_PREFIX} ${step} | ${parts.join(" | ")}`);
-}
-
 export type StorageUploadResult = {
   storagePath: string;
   /** Raw `data.path` from Supabase upload response (before normalize). */
@@ -151,15 +141,6 @@ export async function uploadStorageObject(input: {
   const supabase = await createClient();
   const objectPath = normalizeObjectPath(input.bucket, input.path);
 
-  logStorageLine("uploadStorageObject:before", {
-    bucket: input.bucket,
-    plannedPath: input.path,
-    objectPath,
-    fileName: input.file.name,
-    fileType: input.file.type,
-    fileSize: input.file.size,
-  });
-
   // Upload raw bytes (not the File/Blob itself) so the SDK keys the object by
   // `objectPath` only — passing File can make some runtimes incorporate file.name.
   const body = new Uint8Array(await input.file.arrayBuffer());
@@ -173,13 +154,9 @@ export async function uploadStorageObject(input: {
     });
 
   if (error) {
-    const wrapped = new Error(
+    throw new Error(
       `uploadStorageObject failed (bucket=${input.bucket}, path=${objectPath}): ${error.message}`,
     );
-    console.error(
-      `${LOG_PREFIX} uploadStorageObject:error | bucket=${JSON.stringify(input.bucket)} | objectPath=${JSON.stringify(objectPath)} | error.message=${JSON.stringify(error.message)} | stack=${JSON.stringify(wrapped.stack)}`,
-    );
-    throw wrapped;
   }
 
   const uploadResponsePath =
@@ -193,18 +170,6 @@ export async function uploadStorageObject(input: {
     input.bucket,
     uploadResponsePath ?? objectPath,
   );
-
-  logStorageLine("uploadStorageObject:after", {
-    bucket: input.bucket,
-    objectPathPassedToUpload: objectPath,
-    uploadResponsePath,
-    uploadResponseFullPath,
-    resolvedStoragePath: resolvedPath,
-    pathsMatch:
-      objectPath === resolvedPath ||
-      normalizeObjectPath(input.bucket, uploadResponsePath ?? "") ===
-        objectPath,
-  });
 
   const {
     data: { publicUrl },
@@ -225,7 +190,6 @@ export async function removeStorageObject(
   if (!path) return;
   const supabase = await createClient();
   const objectPath = normalizeObjectPath(bucket, path);
-  logStorageLine("removeStorageObject", { bucket, path, objectPath });
   const { error } = await supabase.storage.from(bucket).remove([objectPath]);
   if (error) {
     throw new Error(error.message);
@@ -240,34 +204,15 @@ export async function createSignedStorageUrl(
   const supabase = await createClient();
   const objectPath = normalizeObjectPath(bucket, path);
 
-  console.log(
-    `${LOG_PREFIX} createSignedStorageUrl:before | bucket=${JSON.stringify(bucket)} | pathPassedIn=${JSON.stringify(path)} | objectPath=${JSON.stringify(objectPath)}`,
-  );
-
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(objectPath, expiresIn);
 
   if (error) {
-    // Exact throw site for "Object not found" (and other Storage sign errors).
-    // Print each field as its own string line — never as a collapsed `{}` object.
-    console.error(`${LOG_PREFIX} createSignedStorageUrl:error`);
-    console.error(`${LOG_PREFIX}   bucket=${JSON.stringify(bucket)}`);
-    console.error(`${LOG_PREFIX}   pathPassedIn=${JSON.stringify(path)}`);
-    console.error(`${LOG_PREFIX}   objectPath=${JSON.stringify(objectPath)}`);
-    console.error(
-      `${LOG_PREFIX}   error.message=${JSON.stringify(error.message)}`,
-    );
-    const wrapped = new Error(
+    throw new Error(
       `createSignedStorageUrl failed (bucket=${bucket}, pathPassedIn=${JSON.stringify(path)}, objectPath=${JSON.stringify(objectPath)}): ${error.message}`,
     );
-    console.error(`${LOG_PREFIX}   stack=${wrapped.stack}`);
-    throw wrapped;
   }
-
-  console.log(
-    `${LOG_PREFIX} createSignedStorageUrl:after | bucket=${JSON.stringify(bucket)} | objectPath=${JSON.stringify(objectPath)} | hasSignedUrl=${JSON.stringify(Boolean(data?.signedUrl))}`,
-  );
 
   return data?.signedUrl ?? null;
 }

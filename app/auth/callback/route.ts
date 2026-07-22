@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSessionProfile } from "@/lib/auth/provision";
 import { getUserRole, homeForRole } from "@/lib/auth/utils";
 import {
   isPlayerAccountSuspended,
@@ -16,10 +17,18 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
+    if (!error && data.user) {
       const role = getUserRole(data.user);
 
-      if (role === "player" && data.user) {
+      if (role === "player" || role === "college") {
+        try {
+          await ensureSessionProfile(role);
+        } catch {
+          // Session exists; portal layouts / ensure RPCs can retry on next load.
+        }
+      }
+
+      if (role === "player") {
         const suspended = await isPlayerAccountSuspended(data.user.id);
         if (suspended) {
           return NextResponse.redirect(

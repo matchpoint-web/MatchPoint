@@ -3,11 +3,6 @@
 import { revalidatePath } from "next/cache";
 import {
   approveCollege,
-  getAdminCollege,
-  getAdminDashboardStats,
-  getAdminPlayer,
-  listAdminColleges,
-  listAdminPlayers,
   restoreCollege,
   restorePlayer,
   suspendCollege,
@@ -25,18 +20,6 @@ function revalidateAdminPaths(playerId?: string, collegeId?: string) {
   if (collegeId) {
     revalidatePath(`/admin/colleges/${collegeId}`);
   }
-}
-
-export async function getAdminDashboardStatsAction() {
-  return getAdminDashboardStats();
-}
-
-export async function listAdminPlayersAction(search?: string) {
-  return listAdminPlayers(search);
-}
-
-export async function getAdminPlayerAction(playerId: string) {
-  return getAdminPlayer(playerId);
 }
 
 export async function suspendPlayerAction(
@@ -70,14 +53,6 @@ export async function restorePlayerAction(
       success: null,
     };
   }
-}
-
-export async function listAdminCollegesAction(search?: string) {
-  return listAdminColleges(search);
-}
-
-export async function getAdminCollegeAction(collegeId: string) {
-  return getAdminCollege(collegeId);
 }
 
 export async function approveCollegeAction(

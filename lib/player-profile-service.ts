@@ -1,4 +1,4 @@
-import { getUserRole } from "@/lib/auth/utils";
+import { requirePlayer } from "@/lib/auth/actions";
 import {
   type Achievement,
   type DocumentItem,
@@ -395,20 +395,6 @@ export async function getPlayerProfileView(): Promise<PlayerProfileViewModel> {
   };
 }
 
-export async function getPlayerDashboardProfile(): Promise<PlayerDashboardProfile> {
-  const view = await getPlayerProfileView();
-  return {
-    name: view.profile.name,
-    country: view.profile.country,
-    graduationYear: view.profile.graduationYear,
-    utr: view.profile.utr,
-    gpa: view.profile.gpa,
-    completion: view.profile.completion,
-    remainingSections: view.remainingSections,
-    profileImageUrl: view.profile.profileImageUrl,
-  };
-}
-
 /** Edit page: raw row + fallback name from auth metadata. */
 export async function getPlayerProfileForEdit() {
   return getCurrentPlayerProfile();
@@ -463,23 +449,14 @@ export async function saveCurrentPlayerProfile(
   input: SavePlayerProfileInput,
 ): Promise<SavePlayerProfileState> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user || getUserRole(user) !== "player") {
-      return {
-        error: "You must be logged in as a player to save your profile.",
-        success: null,
-      };
-    }
+    const user = await requirePlayer();
 
     const fullName = input.fullName.trim();
     if (!fullName) {
       return { error: "Full name is required.", success: null };
     }
 
+    const supabase = await createClient();
     const playerId = await ensureCurrentPlayerId();
     let profileImageUrl = input.existingProfileImageUrl;
 

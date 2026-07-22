@@ -29,11 +29,6 @@ export async function getCurrentCollegeAccountStatus(): Promise<CollegeAccountSt
   return data.account_status;
 }
 
-export async function isApprovedCollegeAccount(): Promise<boolean> {
-  const status = await getCurrentCollegeAccountStatus();
-  return status === "APPROVED";
-}
-
 /**
  * App-layer gate for recruiting routes (search, save, message).
  * RLS remains the hard backstop via is_approved_college_account().

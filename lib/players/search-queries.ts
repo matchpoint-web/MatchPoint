@@ -138,7 +138,9 @@ export async function queryPlayersPage(
     .from("players")
     .select(PLAYER_SEARCH_SELECT, { count: "exact" })
     // Only players linked to authenticated accounts
-    .not("user_id", "is", null);
+    .not("user_id", "is", null)
+    // Colleges must not see suspended accounts
+    .eq("account_status", "ACTIVE");
 
   const nameQuery = input.query.trim();
   if (nameQuery) {

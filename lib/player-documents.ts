@@ -3,9 +3,6 @@
  * Persistence: lib/player-documents-service.ts + lib/storage/queries.ts.
  */
 
-export const PLAYER_DOCUMENTS_BUCKET = "documents";
-export const PLAYER_AVATARS_BUCKET = "avatars";
-
 export type DocumentKind = "file" | "url";
 
 export type DocumentTypeId =

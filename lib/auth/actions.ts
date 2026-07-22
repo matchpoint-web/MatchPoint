@@ -6,9 +6,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { AuthActionState, UserRole } from "@/lib/auth/types";
 import { homeForRole, loginPathForRole, getUserRole } from "@/lib/auth/utils";
 import {
+  ensureSessionProfile,
+  isDuplicateSignupError,
+  repairProfileAfterSignup,
+} from "@/lib/auth/provision";
+import {
   isPlayerAccountSuspended,
   SUSPENDED_ACCOUNT_PATH,
 } from "@/lib/auth/suspended";
+import { getAuthCallbackUrl } from "@/lib/auth/urls";
 import { validateRedirect } from "@/lib/security/redirect";
 
 function getString(formData: FormData, key: string): string {
@@ -20,7 +26,7 @@ function getString(formData: FormData, key: string): string {
  * When true (default), admin createUser marks email confirmed so Closed Beta
  * users can sign in immediately with app_metadata.role on the JWT.
  * Set SUPABASE_SIGNUP_AUTO_CONFIRM=false to require email confirmation;
- * we then attempt auth.resend({ type: "signup" }) after createUser.
+ * we then resend the signup confirmation email after createUser.
  */
 function signupAutoConfirm(): boolean {
   return process.env.SUPABASE_SIGNUP_AUTO_CONFIRM !== "false";
@@ -76,6 +82,12 @@ export async function signUp(
       });
 
     if (createError) {
+      if (isDuplicateSignupError(createError.message)) {
+        return {
+          error:
+            "An account with this email already exists. Please log in instead.",
+        };
+      }
       return { error: createError.message };
     }
 
@@ -83,12 +95,37 @@ export async function signUp(
       return { error: "Failed to create account." };
     }
 
-    // Signup triggers provision players/colleges from app_metadata.role.
-    // Colleges are created as PENDING; players as ACTIVE.
+    // Triggers usually provision the profile; repair if missing (idempotent).
+    // If repair fails, login/callback ensureSessionProfile still recovers.
+    try {
+      await repairProfileAfterSignup({
+        userId: created.user.id,
+        role,
+        fullName: role === "player" ? fullName : undefined,
+        schoolName: role === "college" ? schoolName : undefined,
+      });
+    } catch {
+      // Continue — profile can be ensured on first authenticated session.
+    }
 
     if (!autoConfirm) {
       const supabase = await createClient();
-      await supabase.auth.resend({ type: "signup", email });
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo: getAuthCallbackUrl(),
+        },
+      });
+
+      if (resendError) {
+        return {
+          error: null,
+          success:
+            "Account created, but we could not send the confirmation email. Try logging in later or use “resend confirmation” from Supabase Auth if configured. Contact support if this continues.",
+        };
+      }
+
       return {
         error: null,
         success:
@@ -116,9 +153,17 @@ export async function signUp(
           "Account was created but role provisioning failed. Please contact support.",
       };
     }
+
+    await ensureSessionProfile(role);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to create account.";
+    if (isDuplicateSignupError(message)) {
+      return {
+        error:
+          "An account with this email already exists. Please log in instead.",
+      };
+    }
     return { error: message };
   }
 
@@ -163,6 +208,20 @@ export async function signIn(
       error:
         "This account has no portal role assigned. Please contact support.",
     };
+  }
+
+  if (userRole === "player" || userRole === "college") {
+    try {
+      await ensureSessionProfile(userRole);
+    } catch (ensureError) {
+      await supabase.auth.signOut();
+      return {
+        error:
+          ensureError instanceof Error
+            ? ensureError.message
+            : "Could not load your profile. Please try again.",
+      };
+    }
   }
 
   // Suspended players keep their session and land on a dedicated screen.

@@ -1,3 +1,4 @@
+import { isPlayerAccountSuspended } from "@/lib/auth/suspended";
 import { getUserRole } from "@/lib/auth/utils";
 import type {
   ChatMessage,
@@ -406,6 +407,12 @@ export async function sendMessage(
   }
 
   const ctx = await requireAuthContext();
+  if (ctx.role === "player") {
+    const suspended = await isPlayerAccountSuspended(ctx.userId);
+    if (suspended) {
+      throw new Error("Your account has been suspended.");
+    }
+  }
   const senderRole = ctx.role === "college" ? "college" : "player";
 
   const row = await insertMessage({

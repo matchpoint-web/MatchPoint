@@ -26,10 +26,6 @@ function revalidateDocumentPages() {
   revalidatePath("/player");
 }
 
-export async function getPlayerDocumentsAction(): Promise<PlayerDocumentsState> {
-  return getPlayerDocuments();
-}
-
 /** Upload or replace a file document through the server (Storage + DB). */
 export async function uploadDocumentFileAction(
   documentType: string,
@@ -45,29 +41,16 @@ export async function uploadDocumentFileAction(
   }
 
   try {
-    console.log(
-      `[documents] uploadDocumentFileAction:start | documentType=${JSON.stringify(documentType)} | fileName=${JSON.stringify(file.name)} | fileSize=${JSON.stringify(file.size)}`,
-    );
     const document = await uploadDocumentFile(
       documentType as DocumentTypeId,
       file,
     );
-    console.log(
-      `[documents] uploadDocumentFileAction:uploadOk | documentType=${JSON.stringify(documentType)} | documentId=${JSON.stringify(document.id)} | fileName=${JSON.stringify(document.fileName)} | hasUrl=${JSON.stringify(Boolean(document.url))}`,
-    );
     revalidateDocumentPages();
-    // Refresh can sign every stored path; isolate failures with a clear step label.
     const documents = await getPlayerDocuments();
-    console.log(
-      `[documents] uploadDocumentFileAction:refreshOk | documentType=${JSON.stringify(documentType)} | keys=${JSON.stringify(Object.keys(documents))}`,
-    );
     return { error: null, documents, document };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to upload document.";
-    console.error(
-      `[documents] uploadDocumentFileAction:error | documentType=${JSON.stringify(documentType)} | error.message=${JSON.stringify(message)} | stack=${JSON.stringify(error instanceof Error ? error.stack : undefined)}`,
-    );
     return { error: message, documents: null, document: null };
   }
 }
@@ -91,11 +74,12 @@ export async function saveDocumentUrlAction(
     return { error: null, documents, document };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to save URL.";
+      error instanceof Error ? error.message : "Failed to save document URL.";
     return { error: message, documents: null, document: null };
   }
 }
 
+/** Delete a document (DB row + Storage object when present). */
 export async function deleteDocumentAction(
   documentType: string,
 ): Promise<DocumentActionResult> {

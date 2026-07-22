@@ -29,6 +29,7 @@ export async function getPlayers(): Promise<Player[]> {
     .from("players")
     .select(PLAYER_SEARCH_SELECT)
     .not("user_id", "is", null)
+    .eq("account_status", "ACTIVE")
     .order("created_at", { ascending: false });
 
   if (error) {

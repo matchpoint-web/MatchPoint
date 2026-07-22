@@ -60,7 +60,7 @@ export async function mapDocumentRowsToState(
 
 export async function mapDocumentRowToUploaded(
   row: PlayerDocumentRow,
-  context: string,
+  _context: string,
 ): Promise<UploadedDocument | null> {
   const uiId = toUiDocumentType(row.document_type);
   if (!uiId) return null;
@@ -85,10 +85,8 @@ export async function mapDocumentRowToUploaded(
         row.storage_path,
       );
       if (signed) url = signed;
-    } catch (error) {
-      console.error(
-        `[documents] ${context}:createSignedStorageUrl FAILED | id=${JSON.stringify(row.id)} | document_type=${JSON.stringify(row.document_type)} | player_id=${JSON.stringify(row.player_id)} | error.message=${JSON.stringify(error instanceof Error ? error.message : String(error))}`,
-      );
+    } catch {
+      // Soft-fail: keep metadata / public_url without a signed link.
     }
   }
 
