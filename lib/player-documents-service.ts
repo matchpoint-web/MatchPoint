@@ -1,29 +1,27 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/lib/database.types";
 import { ensureCurrentPlayerId } from "@/lib/players/queries";
 import {
   DOCUMENT_DEFINITIONS,
-  getDefaultDocumentsState,
   isValidHttpUrl,
   toStorageDocumentType,
-  toUiDocumentType,
   type DocumentTypeId,
   type PlayerDocumentsState,
   type UploadedDocument,
 } from "@/lib/player-documents";
 import {
+  mapDocumentRowToUploaded,
+  mapDocumentRowsToState,
+  PLAYER_DOCUMENT_SELECT,
+  queryDocumentsForPlayer,
+  type PlayerDocumentRow,
+} from "@/lib/player-documents/queries";
+import {
   assertDocumentFile,
   buildDocumentStoragePath,
-  createSignedStorageUrl,
   DOCUMENTS_BUCKET,
   removeStorageObject,
   uploadStorageObject,
 } from "@/lib/storage/queries";
-
-type PlayerDocumentRow = Tables<"player_documents">;
-
-const DOCUMENT_SELECT =
-  "id, player_id, document_type, file_name, storage_path, public_url, created_at, updated_at" as const;
 
 async function requireCurrentPlayer(): Promise<{
   userId: string;
@@ -42,72 +40,6 @@ async function requireCurrentPlayer(): Promise<{
   return { userId: user.id, playerId };
 }
 
-async function mapRowToUploaded(
-  row: PlayerDocumentRow,
-  context: string,
-): Promise<UploadedDocument | null> {
-  const uiId = toUiDocumentType(row.document_type);
-  if (!uiId) return null;
-
-  const definition = DOCUMENT_DEFINITIONS.find((def) => def.id === uiId);
-  const uploadedAt = row.updated_at || row.created_at;
-
-  if (definition?.kind === "url") {
-    return {
-      id: uiId,
-      url: row.public_url ?? undefined,
-      uploadedAt,
-    };
-  }
-
-  let url: string | undefined = row.public_url ?? undefined;
-
-  if (row.storage_path) {
-    console.log(
-      `[documents] ${context}:signing row | id=${JSON.stringify(row.id)} | player_id=${JSON.stringify(row.player_id)} | document_type=${JSON.stringify(row.document_type)} | storage_path=${JSON.stringify(row.storage_path)} | file_name=${JSON.stringify(row.file_name)} | bucket=${JSON.stringify(DOCUMENTS_BUCKET)}`,
-    );
-    try {
-      const signed = await createSignedStorageUrl(
-        DOCUMENTS_BUCKET,
-        row.storage_path,
-      );
-      if (signed) url = signed;
-    } catch (error) {
-      // One missing/stale object must not fail the whole documents load/upload.
-      // Flat string lines so the console never collapses details to `{}`.
-      console.error(
-        `[documents] ${context}:createSignedStorageUrl FAILED for player_documents row`,
-      );
-      console.error(`[documents]   id=${JSON.stringify(row.id)}`);
-      console.error(
-        `[documents]   document_type=${JSON.stringify(row.document_type)}`,
-      );
-      console.error(
-        `[documents]   storage_path=${JSON.stringify(row.storage_path)}`,
-      );
-      console.error(
-        `[documents]   player_id=${JSON.stringify(row.player_id)}`,
-      );
-      console.error(
-        `[documents]   bucket=${JSON.stringify(DOCUMENTS_BUCKET)}`,
-      );
-      console.error(
-        `[documents]   error.message=${JSON.stringify(error instanceof Error ? error.message : String(error))}`,
-      );
-      if (error instanceof Error && error.stack) {
-        console.error(`[documents]   stack=${error.stack}`);
-      }
-    }
-  }
-
-  return {
-    id: uiId,
-    fileName: row.file_name ?? undefined,
-    url,
-    uploadedAt,
-  };
-}
-
 async function queryDocumentRow(
   playerId: string,
   storageType: string,
@@ -115,7 +47,7 @@ async function queryDocumentRow(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("player_documents")
-    .select(DOCUMENT_SELECT)
+    .select(PLAYER_DOCUMENT_SELECT)
     .eq("player_id", playerId)
     .eq("document_type", storageType)
     .maybeSingle();
@@ -149,7 +81,7 @@ async function upsertDocumentRow(input: {
       },
       { onConflict: "player_id,document_type" },
     )
-    .select(DOCUMENT_SELECT)
+    .select(PLAYER_DOCUMENT_SELECT)
     .single();
 
   if (error) {
@@ -162,25 +94,8 @@ async function upsertDocumentRow(input: {
 /** Load all documents for the authenticated player. */
 export async function getPlayerDocuments(): Promise<PlayerDocumentsState> {
   const { playerId } = await requireCurrentPlayer();
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("player_documents")
-    .select(DOCUMENT_SELECT)
-    .eq("player_id", playerId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const state = getDefaultDocumentsState();
-  for (const row of (data as PlayerDocumentRow[] | null) ?? []) {
-    const mapped = await mapRowToUploaded(row, "getPlayerDocuments");
-    if (mapped) {
-      state[mapped.id] = mapped;
-    }
-  }
-  return state;
+  const rows = await queryDocumentsForPlayer(playerId);
+  return mapDocumentRowsToState(rows, "getPlayerDocuments");
 }
 
 /**
@@ -204,9 +119,6 @@ export async function uploadDocumentFile(
   const previousPath = existing?.storage_path ?? null;
 
   const plannedPath = buildDocumentStoragePath(playerId, documentType, file);
-  console.log(
-    `[documents] uploadDocumentFile:beforeUpload | bucket=${JSON.stringify(DOCUMENTS_BUCKET)} | playerId=${JSON.stringify(playerId)} | documentType=${JSON.stringify(documentType)} | storageType=${JSON.stringify(storageType)} | plannedPath=${JSON.stringify(plannedPath)} | previousPath=${JSON.stringify(previousPath)} | fileName=${JSON.stringify(file.name)}`,
-  );
 
   const uploaded = await uploadStorageObject({
     bucket: DOCUMENTS_BUCKET,
@@ -214,12 +126,7 @@ export async function uploadDocumentFile(
     file,
     upsert: true,
   });
-  // Always persist the exact key returned by Storage (source of truth for signing).
   const storagePath = uploaded.storagePath;
-
-  console.log(
-    `[documents] uploadDocumentFile:afterUpload | bucket=${JSON.stringify(DOCUMENTS_BUCKET)} | plannedPath=${JSON.stringify(plannedPath)} | uploadResponsePath=${JSON.stringify(uploaded.uploadResponsePath)} | uploadResponseFullPath=${JSON.stringify(uploaded.uploadResponseFullPath)} | storagePathPersisted=${JSON.stringify(storagePath)} | plannedEqualsPersisted=${JSON.stringify(plannedPath === storagePath)}`,
-  );
 
   if (previousPath && previousPath !== storagePath) {
     try {
@@ -237,11 +144,7 @@ export async function uploadDocumentFile(
     publicUrl: null,
   });
 
-  console.log(
-    `[documents] uploadDocumentFile:afterDbUpsert | bucket=${JSON.stringify(DOCUMENTS_BUCKET)} | row.id=${JSON.stringify(row.id)} | row.player_id=${JSON.stringify(row.player_id)} | row.document_type=${JSON.stringify(row.document_type)} | row.storage_path=${JSON.stringify(row.storage_path)} | matchesUploadPath=${JSON.stringify(row.storage_path === storagePath)}`,
-  );
-
-  const mapped = await mapRowToUploaded(row, "uploadDocumentFile");
+  const mapped = await mapDocumentRowToUploaded(row, "uploadDocumentFile");
   if (!mapped) throw new Error("Failed to save document.");
   return mapped;
 }
@@ -281,7 +184,7 @@ export async function saveDocumentUrl(
     publicUrl: trimmed,
   });
 
-  const mapped = await mapRowToUploaded(row, "saveDocumentUrl");
+  const mapped = await mapDocumentRowToUploaded(row, "saveDocumentUrl");
   if (!mapped) throw new Error("Failed to save URL.");
   return mapped;
 }

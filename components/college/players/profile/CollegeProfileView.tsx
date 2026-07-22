@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { GlassCard } from "@/components/player/GlassCard";
 import { SectionTitle } from "@/components/player/SectionTitle";
 import { CoachNotes } from "@/components/college/players/profile/CoachNotes";
@@ -17,6 +17,7 @@ type CollegeProfileViewProps = {
   collegeId: string | null;
   initiallySaved: boolean;
   initialCoachNote?: CoachNote | null;
+  documentsSlot?: ReactNode;
 };
 
 export function CollegeProfileView({
@@ -24,11 +25,13 @@ export function CollegeProfileView({
   collegeId,
   initiallySaved,
   initialCoachNote = null,
+  documentsSlot,
 }: CollegeProfileViewProps) {
   const router = useRouter();
   const [saved, setSaved] = useState(initiallySaved);
   const [isPending, startTransition] = useTransition();
   const [isMessaging, setIsMessaging] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
 
   useEffect(() => {
     setSaved(initiallySaved);
@@ -57,11 +60,13 @@ export function CollegeProfileView({
     if (!collegeId || isMessaging) return;
 
     setIsMessaging(true);
+    setMessageError(null);
     try {
       const conversationId = await getOrCreateConversationAction(profile.id);
       router.push(`/college/messages?c=${encodeURIComponent(conversationId)}`);
     } catch {
       setIsMessaging(false);
+      setMessageError("Could not open conversation. Try again.");
     }
   }
 
@@ -107,7 +112,16 @@ export function CollegeProfileView({
                   className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-full border-2 border-emerald-500/30 bg-gradient-to-br from-zinc-800 to-zinc-900 text-3xl font-bold text-emerald-400/80 shadow-xl shadow-emerald-500/10 sm:h-44 sm:w-44 sm:text-4xl"
                   aria-label={`${profile.name} profile photo`}
                 >
-                  {profile.initials}
+                  {profile.profileImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={profile.profileImageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    profile.initials
+                  )}
                 </div>
               </div>
 
@@ -157,6 +171,11 @@ export function CollegeProfileView({
                     {isMessaging ? "Opening…" : "Message Player"}
                   </button>
                 </div>
+                {messageError ? (
+                  <p className="mt-3 text-sm text-red-400" role="alert">
+                    {messageError}
+                  </p>
+                ) : null}
               </div>
             </div>
           </GlassCard>
@@ -165,10 +184,14 @@ export function CollegeProfileView({
             <SectionTitle title="Biography" />
             <GlassCard className="p-6 sm:p-8">
               <p className="text-base leading-relaxed text-zinc-300 sm:text-lg">
-                {profile.about}
+                {profile.about?.trim()
+                  ? profile.about
+                  : "No biography provided yet."}
               </p>
             </GlassCard>
           </section>
+
+          {documentsSlot}
 
           <CoachNotes playerId={profile.id} initialNote={initialCoachNote} />
         </div>
