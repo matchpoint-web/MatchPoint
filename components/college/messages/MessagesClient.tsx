@@ -5,6 +5,7 @@ import { ConversationList } from "./ConversationList";
 import { ChatWindow, type MessagesViewerRole } from "./ChatWindow";
 import { type Conversation } from "@/lib/college-messages";
 import {
+  getConversationByIdAction,
   getConversationsAction,
   getMessagesAction,
   sendMessageAction,
@@ -109,9 +110,17 @@ export function MessagesClient({
         if (initialConversationId) {
           let list = next;
           if (!list.some((c) => c.id === initialConversationId)) {
-            list = await getConversationsAction();
+            const deepLinked = await getConversationByIdAction(
+              initialConversationId,
+            );
             if (cancelled) return;
-            setConversations(list);
+            if (deepLinked) {
+              list = [
+                deepLinked,
+                ...list.filter((c) => c.id !== deepLinked.id),
+              ];
+              setConversations(list);
+            }
           }
           if (!cancelled) {
             selectConversation(initialConversationId);

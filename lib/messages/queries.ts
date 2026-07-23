@@ -272,6 +272,14 @@ export async function insertConversation(input: {
     .single();
 
   if (error) {
+    // Unique(player_id, college_id) race: another request created the row first.
+    if (error.code === "23505") {
+      const existing = await queryConversationIdBetween(
+        input.collegeId,
+        input.playerId,
+      );
+      if (existing) return existing;
+    }
     throw new Error(error.message);
   }
 

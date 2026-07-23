@@ -3,6 +3,7 @@ import {
   type DocumentItem,
   type HighlightVideo,
   type PlayerProfile,
+  displayOptionalProfileValue,
 } from "@/lib/player-profile";
 import {
   ensureCurrentPlayerId,
@@ -122,14 +123,10 @@ function ageFromDateOfBirth(dateOfBirth: string | null | undefined): number {
   return age > 0 ? age : 0;
 }
 
-function displayOrDash(value: string | number | null | undefined): string {
-  if (value == null) return "—";
-  const text = String(value).trim();
-  return text ? text : "—";
-}
-
 function formatNumber(value: number | null | undefined, digits = 1): string {
-  if (value == null || !Number.isFinite(Number(value))) return "—";
+  if (value == null || !Number.isFinite(Number(value))) {
+    return displayOptionalProfileValue(null);
+  }
   return Number(value).toFixed(digits);
 }
 
@@ -330,20 +327,24 @@ function mapRowToPlayerProfile(
   const country = row.nationality?.trim() || "";
   const handedness = row.dominant_hand
     ? `${row.dominant_hand}-handed`
-    : "—";
+    : displayOptionalProfileValue(null);
 
   return {
     name: row.full_name?.trim() || "Player",
-    country: country || "—",
+    country: displayOptionalProfileValue(country),
     countryFlag: flagForCountry(country),
     age: ageFromDateOfBirth(row.date_of_birth),
-    graduationYear: displayOrDash(row.graduation_year),
+    graduationYear: displayOptionalProfileValue(row.graduation_year),
     utr: formatNumber(row.utr, 1),
     gpa: formatNumber(row.gpa, 1),
-    height: hasNumber(row.height) ? `${Number(row.height)} cm` : "—",
-    weight: hasNumber(row.weight) ? `${Number(row.weight)} kg` : "—",
+    height: hasNumber(row.height)
+      ? `${Number(row.height)} cm`
+      : displayOptionalProfileValue(null),
+    weight: hasNumber(row.weight)
+      ? `${Number(row.weight)} kg`
+      : displayOptionalProfileValue(null),
     handedness,
-    about: row.bio?.trim() || "",
+    about: displayOptionalProfileValue(row.bio),
     completion: calculateProfileCompletion(row),
     profileImageUrl: row.profile_image_url,
   };
@@ -351,37 +352,53 @@ function mapRowToPlayerProfile(
 
 function buildAcademicInfo(row: PlayerProfileRow): InfoGridItem[] {
   return [
-    { label: "High School", value: displayOrDash(row.high_school) },
+    { label: "High School", value: displayOptionalProfileValue(row.high_school) },
     {
       label: "Expected Graduation",
       value: hasNumber(row.graduation_year)
         ? `June ${row.graduation_year}`
-        : "—",
+        : displayOptionalProfileValue(null),
     },
     {
       label: "GPA",
-      value: hasNumber(row.gpa) ? `${formatNumber(row.gpa, 1)} / 4.0` : "—",
+      value: hasNumber(row.gpa)
+        ? `${Number(row.gpa).toFixed(1)} / 4.0`
+        : displayOptionalProfileValue(null),
     },
-    { label: "SAT", value: displayOrDash(row.sat) },
-    { label: "TOEFL", value: displayOrDash(row.toefl) },
+    { label: "SAT", value: displayOptionalProfileValue(row.sat) },
+    { label: "TOEFL", value: displayOptionalProfileValue(row.toefl) },
     {
       label: "IELTS",
-      value: hasNumber(row.ielts) ? formatNumber(row.ielts, 1) : "—",
+      value: hasNumber(row.ielts)
+        ? Number(row.ielts).toFixed(1)
+        : displayOptionalProfileValue(null),
     },
-    { label: "Duolingo", value: displayOrDash(row.duolingo) },
-    { label: "Intended Major", value: displayOrDash(row.intended_major) },
+    { label: "Duolingo", value: displayOptionalProfileValue(row.duolingo) },
+    {
+      label: "Intended Major",
+      value: displayOptionalProfileValue(row.intended_major),
+    },
   ];
 }
 
 function buildTennisInfo(row: PlayerProfileRow): InfoGridItem[] {
   return [
     { label: "UTR", value: formatNumber(row.utr, 1) },
-    { label: "USTA Ranking", value: displayOrDash(row.usta_ranking) },
-    { label: "ITF Ranking", value: displayOrDash(row.itf_ranking) },
-    { label: "National Ranking", value: displayOrDash(row.national_ranking) },
+    {
+      label: "USTA Ranking",
+      value: displayOptionalProfileValue(row.usta_ranking),
+    },
+    {
+      label: "ITF Ranking",
+      value: displayOptionalProfileValue(row.itf_ranking),
+    },
+    {
+      label: "National Ranking",
+      value: displayOptionalProfileValue(row.national_ranking),
+    },
     {
       label: "Preferred NCAA Division",
-      value: displayOrDash(row.preferred_ncaa_division),
+      value: displayOptionalProfileValue(row.preferred_ncaa_division),
     },
   ];
 }

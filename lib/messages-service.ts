@@ -478,7 +478,8 @@ async function notifyMessageReceiver(input: {
 export async function getOrCreateConversation(
   playerId: string,
 ): Promise<string> {
-  if (!playerId) {
+  const trimmedPlayerId = playerId?.trim() ?? "";
+  if (!trimmedPlayerId) {
     throw new Error("Player id is required.");
   }
 
@@ -487,11 +488,75 @@ export async function getOrCreateConversation(
     throw new Error("Only colleges can start conversations with players.");
   }
 
-  const existing = await queryConversationIdBetween(ctx.collegeId, playerId);
+  const existing = await queryConversationIdBetween(
+    ctx.collegeId,
+    trimmedPlayerId,
+  );
   if (existing) return existing;
 
-  return insertConversation({
-    collegeId: ctx.collegeId,
-    playerId,
+  try {
+    return await insertConversation({
+      collegeId: ctx.collegeId,
+      playerId: trimmedPlayerId,
+    });
+  } catch (error) {
+    // Race: another request may have created the unique pair after our lookup.
+    const raced = await queryConversationIdBetween(
+      ctx.collegeId,
+      trimmedPlayerId,
+    );
+    if (raced) return raced;
+
+    const message =
+      error instanceof Error ? error.message : "Failed to create conversation.";
+    console.error("[messages] getOrCreateConversation failed", {
+      collegeId: ctx.collegeId,
+      playerId: trimmedPlayerId,
+      message,
+    });
+    throw new Error(message);
+  }
+}
+
+/** Load one conversation the current user participates in (for deep links). */
+export async function getConversationById(
+  conversationId: string,
+): Promise<Conversation | null> {
+  const trimmed = conversationId?.trim() ?? "";
+  if (!trimmed) return null;
+
+  const ctx = await requireAuthContext();
+  const row = await queryConversationById(trimmed);
+  if (!row) return null;
+
+  if (ctx.role === "college" && row.college_id !== ctx.collegeId) {
+    return null;
+  }
+  if (ctx.role === "player" && row.player_id !== ctx.playerId) {
+    return null;
+  }
+
+  let isSaved = false;
+  let recruitingStatus: RecruitingStatus = "Contacted";
+
+  if (ctx.role === "college") {
+    const [saved, notes] = await Promise.all([
+      querySavedPlayerIds(ctx.collegeId, [row.player_id]),
+      queryCoachNoteStatuses(ctx.collegeId, [row.player_id]),
+    ]);
+    isSaved = saved.includes(row.player_id);
+    recruitingStatus = mapCoachStatusToRecruiting(notes.get(row.player_id));
+  }
+
+  return buildConversationShell(row, [], {
+    viewerRole: ctx.role,
+    isSaved,
+    recruitingStatus,
+    isRecruitingList:
+      recruitingStatus === "Interested" ||
+      recruitingStatus === "Contacted" ||
+      recruitingStatus === "Offer Sent",
+    lastMessage: "",
+    lastMessageAt: row.updated_at ?? row.created_at,
   });
 }

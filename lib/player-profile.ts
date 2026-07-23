@@ -14,6 +14,22 @@ export type PlayerProfile = {
   profileImageUrl?: string | null;
 };
 
+/** Display copy for empty optional Player Profile fields. */
+export const OPTIONAL_PROFILE_PLACEHOLDER = "Not Provided (Optional)";
+
+/** Format an optional profile value for Player Profile UI (never for loading/errors). */
+export function displayOptionalProfileValue(
+  value: string | number | null | undefined,
+): string {
+  if (value == null) return OPTIONAL_PROFILE_PLACEHOLDER;
+  const text = String(value).trim();
+  return text ? text : OPTIONAL_PROFILE_PLACEHOLDER;
+}
+
+export function isOptionalProfilePlaceholder(value: string): boolean {
+  return value.trim() === OPTIONAL_PROFILE_PLACEHOLDER;
+}
+
 export type HighlightVideo = {
   id: string;
   title: string;

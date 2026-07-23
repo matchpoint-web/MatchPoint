@@ -72,8 +72,13 @@ export function CollegeProfileView({
     try {
       const conversationId = await getOrCreateConversationAction(profile.id);
       router.push(`/college/messages?c=${encodeURIComponent(conversationId)}`);
-    } catch {
+    } catch (error) {
       setIsMessaging(false);
+      console.error("[college] Message Player failed", {
+        playerId: profile.id,
+        collegeId,
+        error,
+      });
       setMessageError("Could not open conversation. Try again.");
     }
   }

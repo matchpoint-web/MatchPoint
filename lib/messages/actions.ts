@@ -6,6 +6,7 @@ import {
   MESSAGES_PER_PAGE,
 } from "@/lib/messages/queries";
 import {
+  getConversationById,
   getOrCreateConversation,
   listConversations,
   listMessages,
@@ -95,4 +96,14 @@ export async function getOrCreateConversationAction(
   playerId: string,
 ): Promise<string> {
   return getOrCreateConversation(playerId);
+}
+
+/** Load one owned conversation (supports Messages deep link `?c=`). */
+export async function getConversationByIdAction(
+  conversationId: string,
+): Promise<Conversation | null> {
+  if (!conversationId?.trim()) {
+    throw new Error("Conversation id is required.");
+  }
+  return getConversationById(conversationId.trim());
 }

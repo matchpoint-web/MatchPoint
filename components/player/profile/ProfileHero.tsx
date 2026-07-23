@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { type PlayerProfile } from "@/lib/player-profile";
+import {
+  displayOptionalProfileValue,
+  type PlayerProfile,
+} from "@/lib/player-profile";
 import { GlassCard } from "../GlassCard";
 
 type ProfileHeroProps = {
@@ -7,8 +10,19 @@ type ProfileHeroProps = {
 };
 
 const stats = (profile: PlayerProfile) => [
-  { label: "Country", value: `${profile.country} ${profile.countryFlag}`.trim() },
-  { label: "Age", value: profile.age > 0 ? String(profile.age) : "—" },
+  {
+    label: "Country",
+    value: profile.countryFlag
+      ? `${profile.country} ${profile.countryFlag}`.trim()
+      : profile.country,
+  },
+  {
+    label: "Age",
+    value:
+      profile.age > 0
+        ? String(profile.age)
+        : displayOptionalProfileValue(null),
+  },
   { label: "Graduation Year", value: profile.graduationYear },
   { label: "UTR", value: profile.utr },
   { label: "GPA", value: profile.gpa },
