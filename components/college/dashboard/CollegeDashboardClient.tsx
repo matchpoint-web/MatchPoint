@@ -6,7 +6,6 @@ import { CollegeProfileAvatar } from "@/components/college/CollegeProfileAvatar"
 import {
   getDashboardStats,
   getRecentSavedPlayers,
-  toRecentPlayerRows,
   type DashboardStatCard,
   type RecentSavedPlayerRow,
 } from "@/lib/dashboard";
@@ -17,7 +16,6 @@ import { type SavedPlayerRecord } from "@/lib/saved-player-service";
 type DashboardData = {
   stats: DashboardStatCard[];
   recentSaved: RecentSavedPlayerRow[];
-  recentViewed: RecentSavedPlayerRow[];
 };
 
 type CollegeDashboardClientProps = {
@@ -26,8 +24,6 @@ type CollegeDashboardClientProps = {
   savedPlayersCount: number;
   unreadMessages: number;
   playersCount: number;
-  recentlyViewedCount: number;
-  recentViewedPlayers: Player[];
 };
 
 function loadDashboardData(
@@ -36,19 +32,14 @@ function loadDashboardData(
   savedPlayersCount: number,
   unreadMessages: number,
   playersCount: number,
-  recentlyViewedCount: number,
-  recentViewedPlayers: Player[],
 ): DashboardData {
   return {
     stats: getDashboardStats({
       savedPlayersCount,
       unreadMessages,
       playersCount,
-      recentlyViewedCount,
     }),
     recentSaved: getRecentSavedPlayers(players, savedRecords, 5),
-    // Keep list length aligned with previous UI (5); data loaded up to 10 server-side.
-    recentViewed: toRecentPlayerRows(recentViewedPlayers.slice(0, 5)),
   };
 }
 
@@ -58,8 +49,6 @@ export function CollegeDashboardClient({
   savedPlayersCount,
   unreadMessages,
   playersCount,
-  recentlyViewedCount,
-  recentViewedPlayers,
 }: CollegeDashboardClientProps) {
   const profile = useCollegeProfile();
   const [data, setData] = useState<DashboardData>({
@@ -82,15 +71,8 @@ export function CollegeDashboardClient({
         href: "/college/players",
         description: "Browse and discover recruits",
       },
-      {
-        title: "Recently Viewed",
-        value: 0,
-        href: "/college/players",
-        description: "Player profiles you opened",
-      },
     ],
     recentSaved: [],
-    recentViewed: [],
   });
 
   useEffect(() => {
@@ -101,8 +83,6 @@ export function CollegeDashboardClient({
         savedPlayersCount,
         unreadMessages,
         playersCount,
-        recentlyViewedCount,
-        recentViewedPlayers,
       ),
     );
   }, [
@@ -111,8 +91,6 @@ export function CollegeDashboardClient({
     savedPlayersCount,
     unreadMessages,
     playersCount,
-    recentlyViewedCount,
-    recentViewedPlayers,
   ]);
 
   return (
@@ -141,7 +119,7 @@ export function CollegeDashboardClient({
       </section>
 
       <section>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {data.stats.map((card) => (
             <Link
               key={card.title}
@@ -162,7 +140,7 @@ export function CollegeDashboardClient({
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section>
         <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 p-6 sm:p-7">
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
@@ -190,65 +168,6 @@ export function CollegeDashboardClient({
           ) : (
             <ul className="space-y-2">
               {data.recentSaved.map(({ player }) => (
-                <li key={player.id}>
-                  <Link
-                    href={`/college/players/${player.id}`}
-                    className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] px-3 py-3 transition hover:border-emerald-500/20 hover:bg-white/[0.05]"
-                  >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 bg-zinc-900 text-xs font-bold text-emerald-400">
-                      {player.initials}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {player.name}
-                      </p>
-                      <p className="truncate text-xs text-zinc-500">
-                        {player.country} {player.countryFlag}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-wider text-zinc-500">
-                        UTR
-                      </p>
-                      <p className="text-sm font-semibold text-white">
-                        {player.utr != null ? player.utr.toFixed(1) : "N/A"}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 p-6 sm:p-7">
-          <div className="mb-5 flex items-end justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold tracking-tight text-white">
-                Recently Viewed
-              </h3>
-              <p className="mt-1 text-sm text-zinc-500">
-                Player profiles you opened recently.
-              </p>
-            </div>
-            <Link
-              href="/college/players"
-              className="text-xs font-medium text-emerald-400 hover:text-emerald-300"
-            >
-              Search players
-            </Link>
-          </div>
-
-          {data.recentViewed.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-10 text-center">
-              <p className="text-sm text-zinc-500">
-                No recently viewed players yet. Open a profile from Player
-                Search.
-              </p>
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {data.recentViewed.map(({ player }) => (
                 <li key={player.id}>
                   <Link
                     href={`/college/players/${player.id}`}

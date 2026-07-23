@@ -321,20 +321,30 @@ export type Database = {
           created_at: string
           date_of_birth: string | null
           dominant_hand: string | null
+          duolingo: number | null
           full_name: string
           gpa: number | null
           graduation_year: number | null
           height: number | null
+          high_school: string | null
           id: string
+          ielts: number | null
+          intended_major: string | null
+          itf_ranking: string | null
+          national_ranking: string | null
           nationality: string | null
+          preferred_ncaa_division: string | null
           profile_image_url: string | null
+          sat: number | null
           suspended_at: string | null
           suspended_by: string | null
           suspended_reason:
             | Database["public"]["Enums"]["suspended_reason"]
             | null
+          toefl: number | null
           updated_at: string
           user_id: string | null
+          usta_ranking: string | null
           utr: number | null
           weight: number | null
         }
@@ -345,20 +355,30 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           dominant_hand?: string | null
+          duolingo?: number | null
           full_name: string
           gpa?: number | null
           graduation_year?: number | null
           height?: number | null
+          high_school?: string | null
           id?: string
+          ielts?: number | null
+          intended_major?: string | null
+          itf_ranking?: string | null
+          national_ranking?: string | null
           nationality?: string | null
+          preferred_ncaa_division?: string | null
           profile_image_url?: string | null
+          sat?: number | null
           suspended_at?: string | null
           suspended_by?: string | null
           suspended_reason?:
             | Database["public"]["Enums"]["suspended_reason"]
             | null
+          toefl?: number | null
           updated_at?: string
           user_id?: string | null
+          usta_ranking?: string | null
           utr?: number | null
           weight?: number | null
         }
@@ -369,20 +389,30 @@ export type Database = {
           created_at?: string
           date_of_birth?: string | null
           dominant_hand?: string | null
+          duolingo?: number | null
           full_name?: string
           gpa?: number | null
           graduation_year?: number | null
           height?: number | null
+          high_school?: string | null
           id?: string
+          ielts?: number | null
+          intended_major?: string | null
+          itf_ranking?: string | null
+          national_ranking?: string | null
           nationality?: string | null
+          preferred_ncaa_division?: string | null
           profile_image_url?: string | null
+          sat?: number | null
           suspended_at?: string | null
           suspended_by?: string | null
           suspended_reason?:
             | Database["public"]["Enums"]["suspended_reason"]
             | null
+          toefl?: number | null
           updated_at?: string
           user_id?: string | null
+          usta_ranking?: string | null
           utr?: number | null
           weight?: number | null
         }

@@ -1,6 +1,5 @@
 import { requirePlayer } from "@/lib/auth/actions";
 import {
-  type Achievement,
   type DocumentItem,
   type HighlightVideo,
   type PlayerProfile,
@@ -46,7 +45,6 @@ export type PlayerProfileViewModel = {
   academicInfo: InfoGridItem[];
   tennisInfo: InfoGridItem[];
   highlightVideos: HighlightVideo[];
-  achievements: Achievement[];
   documents: DocumentItem[];
   strength: ProfileStrength;
   remainingSections: number;
@@ -159,6 +157,16 @@ function emptyRow(userId: string, fallbackName: string): PlayerProfileRow {
     date_of_birth: "",
     bio: "",
     profile_image_url: null,
+    high_school: "",
+    sat: null,
+    toefl: null,
+    ielts: null,
+    duolingo: null,
+    intended_major: "",
+    usta_ranking: "",
+    itf_ranking: "",
+    national_ranking: "",
+    preferred_ncaa_division: "",
   };
 }
 
@@ -172,6 +180,12 @@ function normalizeRow(row: PlayerProfileRow): PlayerProfileRow {
     date_of_birth: row.date_of_birth ?? "",
     bio: row.bio ?? "",
     profile_image_url: row.profile_image_url ?? null,
+    high_school: row.high_school ?? "",
+    intended_major: row.intended_major ?? "",
+    usta_ranking: row.usta_ranking ?? "",
+    itf_ranking: row.itf_ranking ?? "",
+    national_ranking: row.national_ranking ?? "",
+    preferred_ncaa_division: row.preferred_ncaa_division || "",
   };
 }
 
@@ -337,7 +351,7 @@ function mapRowToPlayerProfile(
 
 function buildAcademicInfo(row: PlayerProfileRow): InfoGridItem[] {
   return [
-    { label: "High School", value: "—" },
+    { label: "High School", value: displayOrDash(row.high_school) },
     {
       label: "Expected Graduation",
       value: hasNumber(row.graduation_year)
@@ -348,22 +362,26 @@ function buildAcademicInfo(row: PlayerProfileRow): InfoGridItem[] {
       label: "GPA",
       value: hasNumber(row.gpa) ? `${formatNumber(row.gpa, 1)} / 4.0` : "—",
     },
-    { label: "SAT", value: "—" },
-    { label: "TOEFL", value: "—" },
-    { label: "Intended Major", value: "—" },
+    { label: "SAT", value: displayOrDash(row.sat) },
+    { label: "TOEFL", value: displayOrDash(row.toefl) },
+    {
+      label: "IELTS",
+      value: hasNumber(row.ielts) ? formatNumber(row.ielts, 1) : "—",
+    },
+    { label: "Duolingo", value: displayOrDash(row.duolingo) },
+    { label: "Intended Major", value: displayOrDash(row.intended_major) },
   ];
 }
 
 function buildTennisInfo(row: PlayerProfileRow): InfoGridItem[] {
   return [
     { label: "UTR", value: formatNumber(row.utr, 1) },
-    { label: "USTA Ranking", value: "—" },
-    { label: "ITF Ranking", value: "—" },
-    { label: "National Ranking", value: "—" },
-    { label: "Preferred Division", value: "—" },
+    { label: "USTA Ranking", value: displayOrDash(row.usta_ranking) },
+    { label: "ITF Ranking", value: displayOrDash(row.itf_ranking) },
+    { label: "National Ranking", value: displayOrDash(row.national_ranking) },
     {
-      label: "Playing Style",
-      value: "—",
+      label: "Preferred NCAA Division",
+      value: displayOrDash(row.preferred_ncaa_division),
     },
   ];
 }
@@ -388,7 +406,6 @@ export async function getPlayerProfileView(): Promise<PlayerProfileViewModel> {
     academicInfo: buildAcademicInfo(row),
     tennisInfo: buildTennisInfo(row),
     highlightVideos: [],
-    achievements: [],
     documents: buildDocumentItems(),
     strength: buildProfileStrength(row),
     remainingSections: countRemainingSections(row),
@@ -487,6 +504,16 @@ export async function saveCurrentPlayerProfile(
       date_of_birth: input.dateOfBirth.trim() || null,
       bio: input.bio.trim() || null,
       profile_image_url: profileImageUrl,
+      high_school: input.highSchool.trim() || null,
+      sat: input.sat,
+      toefl: input.toefl,
+      ielts: input.ielts,
+      duolingo: input.duolingo,
+      intended_major: input.intendedMajor.trim() || null,
+      usta_ranking: input.ustaRanking.trim() || null,
+      itf_ranking: input.itfRanking.trim() || null,
+      national_ranking: input.nationalRanking.trim() || null,
+      preferred_ncaa_division: input.preferredNcaaDivision || null,
       updated_at: new Date().toISOString(),
     };
 

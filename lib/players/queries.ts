@@ -7,7 +7,7 @@ import {
 } from "@/lib/players/search-queries";
 
 export const PLAYER_PROFILE_SELECT =
-  "id, user_id, full_name, nationality, graduation_year, utr, gpa, height, weight, dominant_hand, backhand, date_of_birth, bio, profile_image_url" as const;
+  "id, user_id, full_name, nationality, graduation_year, utr, gpa, height, weight, dominant_hand, backhand, date_of_birth, bio, profile_image_url, high_school, sat, toefl, ielts, duolingo, intended_major, usta_ranking, itf_ranking, national_ranking, preferred_ncaa_division" as const;
 
 /**
  * Ensure the authenticated player owns a `players` row.

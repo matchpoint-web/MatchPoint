@@ -16,7 +16,6 @@ export function getDashboardStats(input: {
   savedPlayersCount: number;
   unreadMessages: number;
   playersCount: number;
-  recentlyViewedCount: number;
 }): DashboardStatCard[] {
   return [
     {
@@ -40,12 +39,6 @@ export function getDashboardStats(input: {
       href: "/college/players",
       description: "Browse and discover recruits",
     },
-    {
-      title: "Recently Viewed",
-      value: input.recentlyViewedCount,
-      href: "/college/players",
-      description: "Player profiles you opened",
-    },
   ];
 }
 
@@ -61,8 +54,4 @@ export function getRecentSavedPlayers(
     .map((record) => byId.get(record.player_id))
     .filter((player): player is Player => Boolean(player))
     .map((player) => ({ player }));
-}
-
-export function toRecentPlayerRows(players: Player[]): RecentSavedPlayerRow[] {
-  return players.map((player) => ({ player }));
 }

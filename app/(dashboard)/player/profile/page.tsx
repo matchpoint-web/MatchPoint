@@ -3,7 +3,6 @@ import { ProfileStrengthCard } from "@/components/profile/ProfileStrengthCard";
 import { AmbientBackground } from "@/components/player/AmbientBackground";
 import { SectionTitle } from "@/components/player/SectionTitle";
 import { AboutSection } from "@/components/player/profile/AboutSection";
-import { AchievementTimeline } from "@/components/player/profile/AchievementTimeline";
 import { DocumentsSection } from "@/components/player/profile/DocumentsSection";
 import { InfoGridSection } from "@/components/player/profile/InfoGridSection";
 import { ProfileCompletion } from "@/components/player/profile/ProfileCompletion";
@@ -28,7 +27,6 @@ export default async function PlayerProfilePage() {
     academicInfo,
     tennisInfo,
     highlightVideos,
-    achievements,
     strength,
     remainingSections,
   } = view;
@@ -90,11 +88,6 @@ export default async function PlayerProfilePage() {
               subtitle="Showcase your best match play and training footage."
             />
             <VideoGallery videos={highlightVideos} />
-          </section>
-
-          <section>
-            <SectionTitle title="Achievements" />
-            <AchievementTimeline achievements={achievements} />
           </section>
 
           <section>
