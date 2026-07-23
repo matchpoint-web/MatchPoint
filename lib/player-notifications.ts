@@ -102,7 +102,9 @@ export function getNotificationHref(
       return "/player/colleges";
     case "New Message":
     case "new_message":
-      return "/player/messages";
+      return conversationId
+        ? `/player/messages?c=${encodeURIComponent(conversationId)}`
+        : "/player/messages";
     case "Profile Completion Reminder":
     case "reminder":
       return "/player/profile/edit";

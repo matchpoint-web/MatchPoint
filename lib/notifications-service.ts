@@ -204,5 +204,7 @@ export async function getRecentUserNotifications(
 /** Shared helpers for other server services that already have userId. */
 export {
   countUnreadNotifications,
+  markNewMessageNotificationsReadForConversation,
   queryRecentNotifications,
+  queryUnreadNewMessageCountsByConversation,
 } from "@/lib/notifications/queries";

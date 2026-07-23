@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow, type MessagesViewerRole } from "./ChatWindow";
 import { type Conversation } from "@/lib/college-messages";
+import { logError } from "@/lib/errors";
 import {
   getConversationByIdAction,
   getConversationsAction,
-  getMessagesAction,
+  openConversationAction,
   sendMessageAction,
 } from "@/lib/messages/actions";
 
@@ -28,6 +29,7 @@ export function MessagesClient({
   const [draft, setDraft] = useState("");
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
 
   const active = useMemo(
     () => conversations.find((conversation) => conversation.id === activeId) ?? null,
@@ -59,6 +61,8 @@ export function MessagesClient({
     setActiveId(id);
     setMobileShowChat(true);
     setDraft("");
+    setOpenError(null);
+    // Optimistic: clear badge immediately while server marks notifications read.
     setConversations((prev) =>
       prev.map((conversation) =>
         conversation.id === id
@@ -69,30 +73,45 @@ export function MessagesClient({
 
     void (async () => {
       try {
-        const [messages, list] = await Promise.all([
-          getMessagesAction(id),
-          getConversationsAction(),
-        ]);
+        const result = await openConversationAction(id);
 
-        setConversations(() =>
-          list.map((conversation) =>
+        if (!result.ok) {
+          logError("[messages] failed to open conversation", result.error, {
+            conversationId: id,
+            step: result.step,
+          });
+          setOpenError(
+            `${result.step}: ${result.error.message}` +
+              (result.error.digest ? ` (digest ${result.error.digest})` : ""),
+          );
+          return;
+        }
+
+        setConversations(
+          result.conversations.map((conversation) =>
             conversation.id === id
               ? {
                   ...conversation,
-                  messages,
+                  messages: result.messages,
                   lastMessage:
-                    messages[messages.length - 1]?.body ??
+                    result.messages[result.messages.length - 1]?.body ??
                     conversation.lastMessage,
                   lastMessageAt:
-                    messages[messages.length - 1]?.timestamp ??
+                    result.messages[result.messages.length - 1]?.timestamp ??
                     conversation.lastMessageAt,
                   unreadCount: 0,
                 }
               : conversation,
           ),
         );
-      } catch {
-        // Keep existing thread state if refresh fails.
+      } catch (error) {
+        // Unexpected client/runtime failures (network, non-result throws).
+        const serialized = logError(
+          "[messages] failed to open conversation",
+          error,
+          { conversationId: id, step: "client_openConversationAction" },
+        );
+        setOpenError(serialized.message);
       }
     })();
   }, []);
@@ -115,10 +134,8 @@ export function MessagesClient({
             );
             if (cancelled) return;
             if (deepLinked) {
-              list = [
-                deepLinked,
-                ...list.filter((c) => c.id !== deepLinked.id),
-              ];
+              // Never mutate the server-action array (may be non-extensible).
+              list = [deepLinked, ...list.filter((c) => c.id !== deepLinked.id)];
               setConversations(list);
             }
           }
@@ -126,7 +143,10 @@ export function MessagesClient({
             selectConversation(initialConversationId);
           }
         }
-      } catch {
+      } catch (error) {
+        logError("[messages] failed to load inbox", error, {
+          initialConversationId,
+        });
         if (!cancelled) {
           setConversations([]);
           setLoaded(true);
@@ -147,8 +167,10 @@ export function MessagesClient({
       const message = await sendMessageAction(active.id, body);
       appendMessage(active.id, message);
       setDraft("");
-    } catch {
-      // Keep draft so the user can retry.
+    } catch (error) {
+      logError("[messages] failed to send message", error, {
+        conversationId: active.id,
+      });
     }
   }
 
@@ -187,14 +209,21 @@ export function MessagesClient({
           mobileShowChat ? "flex" : "hidden"
         } min-h-0 min-w-0 flex-1 lg:flex`}
       >
-        <ChatWindow
-          conversation={active}
-          draft={draft}
-          onDraftChange={setDraft}
-          onSend={sendMessage}
-          onBack={() => setMobileShowChat(false)}
-          viewerRole={viewerRole}
-        />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {openError ? (
+            <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-xs text-red-200">
+              Could not fully open conversation — {openError}
+            </div>
+          ) : null}
+          <ChatWindow
+            conversation={active}
+            draft={draft}
+            onDraftChange={setDraft}
+            onSend={sendMessage}
+            onBack={() => setMobileShowChat(false)}
+            viewerRole={viewerRole}
+          />
+        </div>
       </div>
     </div>
   );

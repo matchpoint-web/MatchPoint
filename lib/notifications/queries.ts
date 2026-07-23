@@ -145,6 +145,116 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 }
 
 /**
+ * Unread `new_message` notification counts keyed by metadata.conversationId.
+ * Dashboard message stats and inbox badges share this source of truth.
+ */
+export async function queryUnreadNewMessageCountsByConversation(
+  userId: string,
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (!userId) return counts;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id, metadata")
+    .eq("user_id", userId)
+    .eq("type", "new_message")
+    .eq("is_read", false);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  for (const row of data ?? []) {
+    const metadata = row.metadata;
+    if (
+      metadata == null ||
+      typeof metadata !== "object" ||
+      Array.isArray(metadata)
+    ) {
+      continue;
+    }
+    const conversationId = (metadata as Record<string, unknown>).conversationId;
+    if (typeof conversationId !== "string" || !conversationId.trim()) {
+      continue;
+    }
+    const key = conversationId.trim();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return counts;
+}
+
+/**
+ * Mark unread new_message notifications for one conversation as read.
+ * Used when the recipient opens that conversation thread.
+ *
+ * Selects matching rows then updates by id (avoids fragile JSON filter operators).
+ */
+export async function markNewMessageNotificationsReadForConversation(
+  userId: string,
+  conversationId: string,
+): Promise<number> {
+  const trimmedUserId = userId?.trim() ?? "";
+  const trimmedConversationId = conversationId?.trim() ?? "";
+  if (!trimmedUserId || !trimmedConversationId) return 0;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id, metadata")
+    .eq("user_id", trimmedUserId)
+    .eq("type", "new_message")
+    .eq("is_read", false);
+
+  if (error) {
+    throw new Error(
+      `markNewMessageNotificationsReadForConversation select failed: ${error.message}` +
+        (error.code ? ` [${error.code}]` : "") +
+        (error.details ? ` details=${error.details}` : "") +
+        (error.hint ? ` hint=${error.hint}` : ""),
+    );
+  }
+
+  const ids = (data ?? [])
+    .filter((row) => {
+      const metadata = row.metadata;
+      if (
+        metadata == null ||
+        typeof metadata !== "object" ||
+        Array.isArray(metadata)
+      ) {
+        return false;
+      }
+      const value = (metadata as Record<string, unknown>).conversationId;
+      return (
+        typeof value === "string" && value.trim() === trimmedConversationId
+      );
+    })
+    .map((row) => row.id);
+
+  if (ids.length === 0) return 0;
+
+  const { error: updateError } = await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", trimmedUserId)
+    .in("id", ids);
+
+  if (updateError) {
+    throw new Error(
+      `markNewMessageNotificationsReadForConversation update failed: ${updateError.message}` +
+        (updateError.code ? ` [${updateError.code}]` : "") +
+        (updateError.details ? ` details=${updateError.details}` : "") +
+        (updateError.hint ? ` hint=${updateError.hint}` : ""),
+    );
+  }
+
+  return ids.length;
+}
+
+/**
  * Create a notification via the SECURITY DEFINER RPC.
  * Clients have no INSERT policy on notifications.
  */

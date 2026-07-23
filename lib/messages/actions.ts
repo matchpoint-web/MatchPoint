@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import type { ChatMessage, Conversation } from "@/lib/college-messages";
+import { logError, serializeError } from "@/lib/errors";
 import {
   CONVERSATIONS_PER_PAGE,
   MESSAGES_PER_PAGE,
@@ -25,6 +27,39 @@ export type ListMessagesActionInput = {
   page?: number;
   pageSize?: number;
 };
+
+export type OpenConversationResult =
+  | {
+      ok: true;
+      conversationId: string;
+      messages: ChatMessage[];
+      conversations: Conversation[];
+    }
+  | {
+      ok: false;
+      conversationId: string;
+      step:
+        | "validate"
+        | "listMessages"
+        | "listConversations"
+        | "getConversationById";
+      error: ReturnType<typeof serializeError>;
+    };
+
+/** Dashboard / notification caches only — avoid revalidating the active messages page mid-open. */
+function revalidateUnreadSurfaces() {
+  revalidatePath("/college");
+  revalidatePath("/college/dashboard");
+  revalidatePath("/college/notifications");
+  revalidatePath("/player");
+  revalidatePath("/player/notifications");
+}
+
+function revalidateAfterSend() {
+  revalidateUnreadSurfaces();
+  revalidatePath("/college/messages");
+  revalidatePath("/player/messages");
+}
 
 /** Load paginated inbox conversations for the current user. */
 export async function listConversationsAction(
@@ -83,12 +118,112 @@ export async function getMessagesAction(
   return result.messages;
 }
 
+/**
+ * Open a conversation: load messages (marks related notifications read), then inbox.
+ * Returns a serializable result so clients are not stuck with opaque Next.js digests.
+ */
+export async function openConversationAction(
+  conversationId: string,
+): Promise<OpenConversationResult> {
+  const trimmed = conversationId?.trim() ?? "";
+  if (!trimmed) {
+    return {
+      ok: false,
+      conversationId: "",
+      step: "validate",
+      error: serializeError(new Error("Conversation id is required.")),
+    };
+  }
+
+  let messages: ChatMessage[] = [];
+
+  try {
+    const messagePage = await listMessages({
+      conversationId: trimmed,
+      page: 1,
+      pageSize: MESSAGES_PER_PAGE,
+    });
+    messages = messagePage.messages;
+  } catch (error) {
+    const serialized = logError(
+      "[messages] openConversationAction listMessages failed",
+      error,
+      { conversationId: trimmed, step: "listMessages" },
+    );
+    return {
+      ok: false,
+      conversationId: trimmed,
+      step: "listMessages",
+      error: serialized,
+    };
+  }
+
+  let conversations: Conversation[] = [];
+
+  try {
+    const page = await listConversations({
+      page: 1,
+      pageSize: CONVERSATIONS_PER_PAGE,
+    });
+    conversations = page.conversations;
+  } catch (error) {
+    const serialized = logError(
+      "[messages] openConversationAction listConversations failed",
+      error,
+      { conversationId: trimmed, step: "listConversations" },
+    );
+    return {
+      ok: false,
+      conversationId: trimmed,
+      step: "listConversations",
+      error: serialized,
+    };
+  }
+
+  if (!conversations.some((conversation) => conversation.id === trimmed)) {
+    try {
+      const deepLinked = await getConversationById(trimmed);
+      if (deepLinked) {
+        conversations = [deepLinked, ...conversations];
+      }
+    } catch (error) {
+      const serialized = logError(
+        "[messages] openConversationAction getConversationById failed",
+        error,
+        { conversationId: trimmed, step: "getConversationById" },
+      );
+      return {
+        ok: false,
+        conversationId: trimmed,
+        step: "getConversationById",
+        error: serialized,
+      };
+    }
+  }
+
+  revalidateUnreadSurfaces();
+
+  return {
+    ok: true,
+    conversationId: trimmed,
+    messages,
+    conversations,
+  };
+}
+
 /** Send a message in a conversation the current user participates in. */
 export async function sendMessageAction(
   conversationId: string,
   message: string,
 ): Promise<ChatMessage> {
-  return sendMessage(conversationId, message);
+  try {
+    const chatMessage = await sendMessage(conversationId, message);
+    revalidateAfterSend();
+    return chatMessage;
+  } catch (error) {
+    logError("[messages] sendMessageAction failed", error, { conversationId });
+    throw error;
+  }
 }
 
 /** College-only: get or create a conversation with a player. */

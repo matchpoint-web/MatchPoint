@@ -7,6 +7,10 @@ import type {
   RecruitingStatus,
 } from "@/lib/college-messages";
 import { notifyNewMessage } from "@/lib/notifications-service";
+import {
+  markNewMessageNotificationsReadForConversation,
+  queryUnreadNewMessageCountsByConversation,
+} from "@/lib/notifications/queries";
 import { createClient } from "@/lib/supabase/server";
 import {
   flagForCountry,
@@ -183,6 +187,7 @@ function buildConversationShell(
     isRecruitingList: boolean;
     lastMessage: string;
     lastMessageAt: string;
+    unreadCount: number;
   },
 ): Conversation {
   if (extras.viewerRole === "player") {
@@ -204,7 +209,7 @@ function buildConversationShell(
       recruitingStatus: extras.recruitingStatus,
       lastMessage: extras.lastMessage,
       lastMessageAt: extras.lastMessageAt,
-      unreadCount: 0,
+      unreadCount: extras.unreadCount,
       isSaved: extras.isSaved,
       isRecruitingList: extras.isRecruitingList,
       isArchived: false,
@@ -231,7 +236,7 @@ function buildConversationShell(
     recruitingStatus: extras.recruitingStatus,
     lastMessage: extras.lastMessage,
     lastMessageAt: extras.lastMessageAt,
-    unreadCount: 0,
+    unreadCount: extras.unreadCount,
     isSaved: extras.isSaved,
     isRecruitingList: extras.isRecruitingList,
     isArchived: false,
@@ -287,7 +292,10 @@ export async function listConversations(
   const conversationIds = rows.map((row) => row.id);
   const playerIds = [...new Set(rows.map((row) => row.player_id))];
 
-  const latestRows = await queryLatestMessagesForConversations(conversationIds);
+  const [latestRows, unreadByConversation] = await Promise.all([
+    queryLatestMessagesForConversations(conversationIds),
+    queryUnreadNewMessageCountsByConversation(ctx.userId),
+  ]);
   const messagesByConversation = new Map<string, MessageRow[]>();
   for (const row of latestRows) {
     const list = messagesByConversation.get(row.conversation_id) ?? [];
@@ -330,6 +338,7 @@ export async function listConversations(
           recruitingStatus === "Offer Sent",
         lastMessage: latest?.message ?? "",
         lastMessageAt: latest?.created_at ?? row.updated_at ?? row.created_at,
+        unreadCount: unreadByConversation.get(row.id) ?? 0,
       });
     })
     .filter((conversation): conversation is Conversation => conversation != null);
@@ -361,13 +370,46 @@ export async function getConversations(): Promise<Conversation[]> {
 export async function listMessages(
   params: ListMessagesParams,
 ): Promise<MessagesPageResult> {
-  await requireAuthContext();
+  const ctx = await requireAuthContext();
+  const conversationId = params.conversationId?.trim() ?? "";
+  if (!conversationId) {
+    throw new Error("Conversation id is required.");
+  }
+
+  // Opening a thread marks related new_message notifications as read.
+  // Dashboard unread message counts use the same notification rows.
+  try {
+    const marked = await markNewMessageNotificationsReadForConversation(
+      ctx.userId,
+      conversationId,
+    );
+    if (marked > 0) {
+      console.info("[messages] marked conversation notifications read", {
+        conversationId,
+        marked,
+        userId: ctx.userId,
+      });
+    }
+  } catch (error) {
+    console.error("[messages] failed to mark conversation notifications read", {
+      conversationId,
+      userId: ctx.userId,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
+    });
+  }
 
   const pageSize = params.pageSize ?? MESSAGES_PER_PAGE;
   const page = params.page ?? 1;
   const { rows, totalCount, page: resolvedPage, pageSize: resolvedSize } =
     await queryMessagesPage({
-      conversationId: params.conversationId,
+      conversationId,
       page,
       pageSize,
     });
@@ -538,14 +580,21 @@ export async function getConversationById(
 
   let isSaved = false;
   let recruitingStatus: RecruitingStatus = "Contacted";
+  let unreadCount = 0;
 
   if (ctx.role === "college") {
-    const [saved, notes] = await Promise.all([
+    const [saved, notes, unreadByConversation] = await Promise.all([
       querySavedPlayerIds(ctx.collegeId, [row.player_id]),
       queryCoachNoteStatuses(ctx.collegeId, [row.player_id]),
+      queryUnreadNewMessageCountsByConversation(ctx.userId),
     ]);
     isSaved = saved.includes(row.player_id);
     recruitingStatus = mapCoachStatusToRecruiting(notes.get(row.player_id));
+    unreadCount = unreadByConversation.get(row.id) ?? 0;
+  } else {
+    const unreadByConversation =
+      await queryUnreadNewMessageCountsByConversation(ctx.userId);
+    unreadCount = unreadByConversation.get(row.id) ?? 0;
   }
 
   return buildConversationShell(row, [], {
@@ -558,5 +607,6 @@ export async function getConversationById(
       recruitingStatus === "Offer Sent",
     lastMessage: "",
     lastMessageAt: row.updated_at ?? row.created_at,
+    unreadCount,
   });
 }
