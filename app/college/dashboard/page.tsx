@@ -1,11 +1,19 @@
 import { CollegeDashboardClient } from "@/components/college/dashboard/CollegeDashboardClient";
 import { getCollegeDashboardData } from "@/lib/college-dashboard-service";
+import { getCurrentCollegeProfile } from "@/lib/college-profile-service";
+import { getEmptyCollegeProfile } from "@/lib/college-profile";
 
 export default async function CollegeDashboard() {
   let data: Awaited<ReturnType<typeof getCollegeDashboardData>> | null = null;
+  let profile = getEmptyCollegeProfile();
 
   try {
-    data = await getCollegeDashboardData();
+    const [dashboard, collegeProfile] = await Promise.all([
+      getCollegeDashboardData(),
+      getCurrentCollegeProfile(),
+    ]);
+    data = dashboard;
+    profile = collegeProfile;
   } catch {
     data = null;
   }
@@ -27,6 +35,7 @@ export default async function CollegeDashboard() {
   return (
     <div className="px-6 py-8 sm:px-8 lg:px-10">
       <CollegeDashboardClient
+        profile={profile}
         players={data.players}
         savedRecords={data.savedRecords}
         savedPlayersCount={data.savedPlayersCount}

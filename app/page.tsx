@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MarketingFooter } from "@/components/marketing/MarketingShell";
 
 export default function Home() {
   return (
@@ -24,12 +25,15 @@ export default function Home() {
             </h1>
 
             <p className="mb-6 text-xl font-light tracking-wide text-zinc-300 sm:text-2xl md:text-3xl">
-              Where Tennis Meets Opportunity.
+              Build Your Recruiting Profile.
+              <br />
+              Get Discovered.
+              <br />
+              Play College Tennis in the U.S.
             </p>
 
             <p className="mx-auto mb-12 max-w-2xl text-base leading-relaxed text-zinc-500 sm:text-lg">
-              Connecting talented tennis players with college opportunities
-              around the world.
+              Where Tennis Meets Opportunity.
             </p>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
@@ -63,15 +67,17 @@ export default function Home() {
               {[
                 {
                   label: "FOR PLAYERS",
-                  description: "Build your recruiting profile.",
+                  description:
+                    "Discover college opportunities that match your profile.",
                 },
                 {
                   label: "FOR COLLEGES",
-                  description: "Discover international tennis players.",
+                  description:
+                    "Find talented players from around the world.",
                 },
                 {
                   label: "DIRECT CONNECT",
-                  description: "Search, evaluate, and message.",
+                  description: "Connect directly with the right people.",
                 },
               ].map((feature) => (
                 <div
@@ -101,20 +107,24 @@ export default function Home() {
               <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
                 Early Access
               </h2>
-              <p className="mx-auto max-w-md text-zinc-500">
-                MatchPoint is opening soon for players and college coaches.
-                Join the marketplace built for tennis recruiting.
+              <p className="mx-auto mb-8 max-w-md text-zinc-500">
+                Join the first group of players and colleges.
+                <br />
+                Be among the first to experience MatchPoint before public
+                launch.
               </p>
+              <Link
+                href="/auth/player/signup"
+                className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-10 py-4 text-lg font-semibold text-black shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:scale-[1.03] hover:shadow-emerald-500/40"
+              >
+                Join Early Access
+              </Link>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/5 px-6 py-10 sm:px-10">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="text-sm text-zinc-600">&copy; 2026 MatchPoint</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

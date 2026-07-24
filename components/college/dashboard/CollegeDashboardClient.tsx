@@ -1,24 +1,15 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { CollegeProfileAvatar } from "@/components/college/CollegeProfileAvatar";
 import {
   getDashboardStats,
   getRecentSavedPlayers,
-  type DashboardStatCard,
-  type RecentSavedPlayerRow,
 } from "@/lib/dashboard";
+import type { CollegeProfile } from "@/lib/college-profile";
 import { type Player } from "@/lib/player-service";
-import { useCollegeProfile } from "@/lib/use-college-profile";
 import { type SavedPlayerRecord } from "@/lib/saved-player-service";
 
-type DashboardData = {
-  stats: DashboardStatCard[];
-  recentSaved: RecentSavedPlayerRow[];
-};
-
 type CollegeDashboardClientProps = {
+  profile: CollegeProfile;
   players: Player[];
   savedRecords: SavedPlayerRecord[];
   savedPlayersCount: number;
@@ -26,72 +17,24 @@ type CollegeDashboardClientProps = {
   playersCount: number;
 };
 
-function loadDashboardData(
-  players: Player[],
-  savedRecords: SavedPlayerRecord[],
-  savedPlayersCount: number,
-  unreadMessages: number,
-  playersCount: number,
-): DashboardData {
-  return {
-    stats: getDashboardStats({
-      savedPlayersCount,
-      unreadMessages,
-      playersCount,
-    }),
-    recentSaved: getRecentSavedPlayers(players, savedRecords, 5),
-  };
-}
-
+/**
+ * College dashboard body — server-rendered from props (no client state).
+ * Avoids SSR/client default mismatches from deferred useEffect hydration.
+ */
 export function CollegeDashboardClient({
+  profile,
   players,
   savedRecords,
   savedPlayersCount,
   unreadMessages,
   playersCount,
 }: CollegeDashboardClientProps) {
-  const profile = useCollegeProfile();
-  const [data, setData] = useState<DashboardData>({
-    stats: [
-      {
-        title: "Saved Players",
-        value: 0,
-        href: "/college/saved",
-        description: "Players bookmarked for recruiting",
-      },
-      {
-        title: "Messages",
-        value: 0,
-        href: "/college/messages",
-        description: "0 unread messages",
-      },
-      {
-        title: "Player Search",
-        value: 0,
-        href: "/college/players",
-        description: "Browse and discover recruits",
-      },
-    ],
-    recentSaved: [],
-  });
-
-  useEffect(() => {
-    setData(
-      loadDashboardData(
-        players,
-        savedRecords,
-        savedPlayersCount,
-        unreadMessages,
-        playersCount,
-      ),
-    );
-  }, [
-    players,
-    savedRecords,
+  const stats = getDashboardStats({
     savedPlayersCount,
     unreadMessages,
     playersCount,
-  ]);
+  });
+  const recentSaved = getRecentSavedPlayers(players, savedRecords, 5);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -120,7 +63,7 @@ export function CollegeDashboardClient({
 
       <section>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {data.stats.map((card) => (
+          {stats.map((card) => (
             <Link
               key={card.title}
               href={card.href}
@@ -159,7 +102,7 @@ export function CollegeDashboardClient({
             </Link>
           </div>
 
-          {data.recentSaved.length === 0 ? (
+          {recentSaved.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-10 text-center">
               <p className="text-sm text-zinc-500">
                 No saved players yet. Save players from Player Search.
@@ -167,7 +110,7 @@ export function CollegeDashboardClient({
             </div>
           ) : (
             <ul className="space-y-2">
-              {data.recentSaved.map(({ player }) => (
+              {recentSaved.map(({ player }) => (
                 <li key={player.id}>
                   <Link
                     href={`/college/players/${player.id}`}

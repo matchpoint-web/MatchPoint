@@ -1,5 +1,3 @@
-import { GlassCard } from "@/components/player/GlassCard";
-
 type HighlightVideoEmbedProps = {
   title: string;
   embedUrl: string;
