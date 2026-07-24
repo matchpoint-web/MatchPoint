@@ -33,7 +33,9 @@ export function isOptionalProfilePlaceholder(value: string): boolean {
 export type HighlightVideo = {
   id: string;
   title: string;
-  duration: string;
+  url: string;
+  embedUrl: string;
+  provider: "youtube" | "vimeo";
 };
 
 export type Achievement = {

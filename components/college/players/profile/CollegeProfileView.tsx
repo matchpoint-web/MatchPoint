@@ -17,6 +17,7 @@ type CollegeProfileViewProps = {
   collegeId: string | null;
   initiallySaved: boolean;
   initialCoachNote?: CoachNote | null;
+  highlightVideoSlot?: ReactNode;
   documentsSlot?: ReactNode;
 };
 
@@ -33,6 +34,7 @@ export function CollegeProfileView({
   collegeId,
   initiallySaved,
   initialCoachNote = null,
+  highlightVideoSlot,
   documentsSlot,
 }: CollegeProfileViewProps) {
   const router = useRouter();
@@ -259,6 +261,8 @@ export function CollegeProfileView({
               )}
             </GlassCard>
           </section>
+
+          {highlightVideoSlot}
 
           {documentsSlot}
 

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { CollegeHighlightVideo } from "@/components/college/players/profile/CollegeHighlightVideo";
 import { CollegePlayerDocuments } from "@/components/college/players/profile/CollegePlayerDocuments";
 import { CollegeProfileView } from "@/components/college/players/profile/CollegeProfileView";
 import { GlassCard } from "@/components/player/GlassCard";
@@ -17,11 +18,7 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-async function CollegePlayerDocumentsSection({
-  playerId,
-}: {
-  playerId: string;
-}) {
+async function CollegePlayerMediaSection({ playerId }: { playerId: string }) {
   let documents: PlayerDocumentsState | null = null;
   let error: string | null = null;
 
@@ -32,12 +29,22 @@ async function CollegePlayerDocumentsSection({
       err instanceof Error ? err.message : "Failed to load player documents.";
   }
 
+  const highlightUrl = documents?.["highlight-video"]?.url ?? null;
+  const documentsForList: PlayerDocumentsState | null = documents
+    ? Object.fromEntries(
+        Object.entries(documents).filter(([key]) => key !== "highlight-video"),
+      )
+    : null;
+
   return (
-    <CollegePlayerDocuments
-      playerId={playerId}
-      initialDocuments={documents}
-      initialError={error}
-    />
+    <div className="space-y-8">
+      <CollegeHighlightVideo url={highlightUrl} />
+      <CollegePlayerDocuments
+        playerId={playerId}
+        initialDocuments={documentsForList}
+        initialError={error}
+      />
+    </div>
   );
 }
 
@@ -92,7 +99,7 @@ export default async function CollegePlayerProfilePage({ params }: PageProps) {
       initialCoachNote={initialCoachNote}
       documentsSlot={
         <Suspense fallback={<DocumentsLoading />}>
-          <CollegePlayerDocumentsSection playerId={id} />
+          <CollegePlayerMediaSection playerId={id} />
         </Suspense>
       }
     />

@@ -142,7 +142,7 @@ export async function uploadDocumentFile(
   return mapped;
 }
 
-/** Save highlight video URL only (no Storage object). */
+/** Save a highlight video URL (YouTube / Vimeo only). */
 export async function saveDocumentUrl(
   documentType: DocumentTypeId,
   url: string,
@@ -153,7 +153,12 @@ export async function saveDocumentUrl(
   }
 
   const trimmed = url.trim();
-  if (!isValidHttpUrl(trimmed)) {
+  if (documentType === "highlight-video") {
+    const { isValidHighlightVideoUrl } = await import("@/lib/highlight-video");
+    if (!isValidHighlightVideoUrl(trimmed)) {
+      throw new Error("Enter a valid YouTube or Vimeo URL.");
+    }
+  } else if (!isValidHttpUrl(trimmed)) {
     throw new Error("Enter a valid http(s) URL.");
   }
 

@@ -69,30 +69,15 @@ export function CollegeSearchFilters({
       clear: () => update("division", ""),
     });
   }
-  if (filters.utrRange) {
-    const label =
-      collegeFilterOptions.utrRanges.find((r) => r.value === filters.utrRange)
-        ?.label ?? filters.utrRange;
-    activeChips.push({
-      label: label,
-      clear: () => update("utrRange", ""),
-    });
-  }
 
   return (
     <div className="space-y-4 rounded-3xl border border-white/8 bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 p-4 sm:p-5">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-1 lg:max-w-sm">
         <FilterSelect
           label="Division"
           value={filters.division}
           onChange={(value) => update("division", value)}
           options={collegeFilterOptions.divisions}
-        />
-        <FilterSelect
-          label="Average Team UTR"
-          value={filters.utrRange}
-          onChange={(value) => update("utrRange", value)}
-          options={collegeFilterOptions.utrRanges}
         />
       </div>
 

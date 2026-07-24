@@ -1,12 +1,21 @@
 import { CollegeSearchClient } from "@/components/player/colleges/CollegeSearchClient";
 import { getColleges } from "@/lib/college-search-service";
+import { getSavedCollegeIds } from "@/lib/saved-college-service";
 
 export default async function CollegeSearchPage() {
   let colleges: Awaited<ReturnType<typeof getColleges>> = [];
+  let savedIds: string[] = [];
+
   try {
     colleges = await getColleges();
   } catch {
     colleges = [];
+  }
+
+  try {
+    savedIds = await getSavedCollegeIds();
+  } catch {
+    savedIds = [];
   }
 
   return (
@@ -15,7 +24,10 @@ export default async function CollegeSearchPage() {
         <p className="mb-6 text-sm text-zinc-500 sm:text-base">
           Explore college tennis programs and find your next opportunity.
         </p>
-        <CollegeSearchClient initialColleges={colleges} />
+        <CollegeSearchClient
+          initialColleges={colleges}
+          initialSavedIds={savedIds}
+        />
       </div>
     </div>
   );

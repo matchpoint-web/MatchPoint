@@ -39,7 +39,9 @@ export function CollegePlayerDocuments({
     });
   }, [playerId]);
 
-  const entries = DOCUMENT_DEFINITIONS.map((def) => ({
+  const entries = DOCUMENT_DEFINITIONS.filter(
+    (def) => def.id !== "highlight-video",
+  ).map((def) => ({
     definition: def,
     uploaded: documents?.[def.id] ?? null,
   }));

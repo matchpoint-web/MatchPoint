@@ -24,6 +24,7 @@ function revalidateDocumentPages() {
   revalidatePath("/player/documents");
   revalidatePath("/player/profile");
   revalidatePath("/player");
+  revalidatePath("/college/players");
 }
 
 /** Upload or replace a file document through the server (Storage + DB). */

@@ -21,7 +21,7 @@ export function ConversationList({
   const inbox = conversations.filter((conversation) => !conversation.isArchived);
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col border-r border-white/[0.06] bg-zinc-950/80 backdrop-blur-xl lg:w-[34%]">
+    <aside className="flex h-full min-h-0 w-full flex-col border-r border-white/[0.06] bg-zinc-950/80 backdrop-blur-xl">
       <div className="border-b border-white/[0.06] px-5 py-5">
         <h1 className="text-xl font-semibold tracking-tight text-white">
           Inbox
@@ -39,6 +39,9 @@ export function ConversationList({
         ) : (
           inbox.map((conversation) => {
             const active = conversation.id === activeId;
+            const location = [conversation.country, conversation.division]
+              .filter(Boolean)
+              .join(" · ");
             return (
               <button
                 key={conversation.id}
@@ -58,19 +61,24 @@ export function ConversationList({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="mb-0.5 flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-semibold text-white">
+                  <div className="mb-0.5 flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold leading-snug text-white">
                       {conversation.playerName}
                     </p>
-                    <span className="shrink-0 text-[10px] text-zinc-500">
+                    <span className="shrink-0 pt-0.5 text-[10px] text-zinc-500">
                       {formatRelativeTime(conversation.lastMessageAt)}
                     </span>
                   </div>
-                  <p className="mb-1 truncate text-xs text-zinc-500">
-                    {conversation.country} {conversation.countryFlag}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <p className="min-w-0 flex-1 truncate text-xs text-zinc-400">
+                  {location ? (
+                    <p className="mb-1 text-xs leading-snug text-zinc-500">
+                      {location}
+                      {conversation.countryFlag
+                        ? ` ${conversation.countryFlag}`
+                        : ""}
+                    </p>
+                  ) : null}
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 flex-1 text-xs leading-snug text-zinc-400 line-clamp-2">
                       {conversation.lastMessage}
                     </p>
                     {conversation.unreadCount > 0 ? (

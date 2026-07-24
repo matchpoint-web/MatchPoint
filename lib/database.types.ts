@@ -493,6 +493,42 @@ export type Database = {
           },
         ]
       }
+      saved_colleges: {
+        Row: {
+          college_id: string
+          created_at: string
+          id: string
+          player_id: string
+        }
+        Insert: {
+          college_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+        }
+        Update: {
+          college_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_colleges_college_id_fkey"
+            columns: ["college_id"]
+            isOneToOne: false
+            referencedRelation: "colleges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_colleges_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

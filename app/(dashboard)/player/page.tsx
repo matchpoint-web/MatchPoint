@@ -4,14 +4,24 @@ import {
   getNotificationHref,
 } from "@/lib/player-notifications";
 import { getPlayerDashboardData } from "@/lib/player-dashboard-service";
+import { getSavedColleges } from "@/lib/saved-college-service";
+import type { College } from "@/lib/colleges";
 import { NotificationIcon } from "@/components/player/notifications/NotificationIcon";
+import { SavedCollegesSection } from "@/components/player/dashboard/SavedCollegesSection";
 
 export default async function PlayerDashboard() {
   let data;
+  let savedColleges: College[] = [];
   try {
     data = await getPlayerDashboardData();
   } catch {
     data = null;
+  }
+
+  try {
+    savedColleges = await getSavedColleges();
+  } catch {
+    savedColleges = [];
   }
 
   if (!data) {
@@ -210,6 +220,8 @@ export default async function PlayerDashboard() {
             ))}
           </div>
         </section>
+
+        <SavedCollegesSection colleges={savedColleges} />
 
         <section className="rounded-3xl border border-white/8 bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 p-6 sm:p-8">
           <div className="mb-5 flex items-end justify-between gap-3">

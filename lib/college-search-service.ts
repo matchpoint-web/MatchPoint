@@ -74,6 +74,24 @@ export async function getColleges(): Promise<College[]> {
   return ((data as CollegeRow[] | null) ?? []).map(mapRowToCollege);
 }
 
+/** Colleges by id (preserves caller order filtering; missing ids omitted). */
+export async function getCollegesByIds(ids: string[]): Promise<College[]> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (unique.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("colleges")
+    .select(COLLEGE_SEARCH_SELECT)
+    .in("id", unique);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data as CollegeRow[] | null) ?? []).map(mapRowToCollege);
+}
+
 /** Single college by id for the detail page. */
 export async function getCollegeById(id: string): Promise<College | null> {
   if (!id) return null;

@@ -1,4 +1,5 @@
 import { requirePlayer } from "@/lib/auth/actions";
+import { parseHighlightVideoUrl } from "@/lib/highlight-video";
 import {
   type DocumentItem,
   type HighlightVideo,
@@ -19,6 +20,7 @@ import {
   type ProfileStrength,
   type ProfileStrengthItem,
 } from "@/lib/profile-strength";
+import { queryDocumentsForPlayer } from "@/lib/player-documents/queries";
 import { createClient } from "@/lib/supabase/server";
 import {
   assertAvatarFile,
@@ -410,6 +412,39 @@ function buildDocumentItems(): DocumentItem[] {
   ];
 }
 
+async function loadHighlightVideos(playerId: string): Promise<HighlightVideo[]> {
+  const rows = await queryDocumentsForPlayer(playerId);
+  const highlight = rows.find((row) => row.document_type === "highlight_video");
+  if (!highlight) return [];
+
+  const url = highlight.public_url?.trim();
+  if (!url) return [];
+
+  const parsed = parseHighlightVideoUrl(url);
+  if (!parsed) {
+    // Persist unsupported URLs as a clickable fallback entry (no embed).
+    return [
+      {
+        id: highlight.id,
+        title: "Highlight Video",
+        url,
+        embedUrl: "",
+        provider: "youtube",
+      },
+    ];
+  }
+
+  return [
+    {
+      id: highlight.id,
+      title: parsed.title,
+      url: parsed.url,
+      embedUrl: parsed.embedUrl,
+      provider: parsed.provider,
+    },
+  ];
+}
+
 /**
  * Load the authenticated player's profile for dashboard + profile pages.
  * All Supabase access stays in this service / players queries layer.
@@ -417,12 +452,15 @@ function buildDocumentItems(): DocumentItem[] {
 export async function getPlayerProfileView(): Promise<PlayerProfileViewModel> {
   const { profile, userId, fallbackName } = await getCurrentPlayerProfile();
   const row = normalizeRow(profile ?? emptyRow(userId, fallbackName));
+  const highlightVideos = row.id
+    ? await loadHighlightVideos(row.id)
+    : [];
 
   return {
     profile: mapRowToPlayerProfile(row),
     academicInfo: buildAcademicInfo(row),
     tennisInfo: buildTennisInfo(row),
-    highlightVideos: [],
+    highlightVideos,
     documents: buildDocumentItems(),
     strength: buildProfileStrength(row),
     remainingSections: countRemainingSections(row),

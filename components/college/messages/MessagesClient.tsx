@@ -192,7 +192,7 @@ export function MessagesClient({
       <div
         className={`${
           mobileShowChat ? "hidden" : "flex"
-        } h-full w-full lg:flex lg:w-[34%]`}
+        } h-full w-full lg:flex lg:w-[300px] lg:shrink-0`}
       >
         <ConversationList
           conversations={conversations}

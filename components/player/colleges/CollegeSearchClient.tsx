@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { CollegeCard } from "./CollegeCard";
 import { CollegeSearchFilters } from "./CollegeSearchFilters";
 import {
@@ -13,27 +13,30 @@ import {
   type CollegeFilters,
   type CollegeSortOption,
 } from "@/lib/colleges";
+import { toggleSavedCollegeAction } from "@/lib/saved-colleges/actions";
 
 type CollegeSearchClientProps = {
   initialColleges: College[];
+  initialSavedIds?: string[];
 };
 
 function countActiveFilters(filters: CollegeFilters): number {
-  let count = 0;
-  if (filters.division) count++;
-  if (filters.utrRange) count++;
-  return count;
+  return filters.division ? 1 : 0;
 }
 
 export function CollegeSearchClient({
   initialColleges,
+  initialSavedIds = [],
 }: CollegeSearchClientProps) {
   const [colleges] = useState(initialColleges);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<CollegeFilters>(defaultCollegeFilters);
   const [sort, setSort] = useState<CollegeSortOption>("name-asc");
   const [page, setPage] = useState(1);
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savedIds, setSavedIds] = useState<Set<string>>(
+    () => new Set(initialSavedIds),
+  );
+  const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
     () => sortColleges(filterColleges(colleges, query, filters), sort),
@@ -64,11 +67,31 @@ export function CollegeSearchClient({
   }
 
   function toggleSave(id: string) {
+    const previouslySaved = savedIds.has(id);
     setSavedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
+      if (previouslySaved) next.delete(id);
       else next.add(id);
       return next;
+    });
+
+    startTransition(async () => {
+      try {
+        const nowSaved = await toggleSavedCollegeAction(id);
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          if (nowSaved) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+      } catch {
+        setSavedIds((prev) => {
+          const next = new Set(prev);
+          if (previouslySaved) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+      }
     });
   }
 
@@ -147,6 +170,7 @@ export function CollegeSearchClient({
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-zinc-500">
           {filtered.length} college{filtered.length === 1 ? "" : "s"} found
+          {isPending ? " · Saving…" : ""}
         </p>
       </div>
 
